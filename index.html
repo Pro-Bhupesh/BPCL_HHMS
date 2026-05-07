@@ -519,8 +519,31 @@
 <!-- TOAST CONTAINER -->
 <div id="toastBox"></div>
 
-<!-- LOGIN OVERLAY -->
-<div class="login-bg" id="loginPage">
+<!-- CLOUD SETUP REQUIRED OVERLAY (first run, before any URL is configured) -->
+<div class="login-bg" id="setupPage" style="display:none">
+  <div class="login-card" style="max-width:520px">
+    <div class="login-head">
+      <div class="login-logo">BPCL</div>
+      <div class="login-title">Hose &amp; Nozzle Replacement Tracker</div>
+      <div class="login-sub">First-time setup &bull; Connect your Google Sheet</div>
+      <div class="login-tag">Energising Lives</div>
+    </div>
+    <div style="padding:0 6px;color:var(--text);font-size:13px;line-height:1.5">
+      <p style="margin:8px 0 14px"><strong>Welcome.</strong> This app stores all data in a secure Google Sheet that you control. Before you can sign in, an Engineering Officer must finish the one-time deployment described in the <em>BPCL Cloud Setup Guide</em>.</p>
+      <p style="margin:8px 0 14px">If your Officer has already deployed the Apps Script, paste the Web App URL below. Otherwise contact them or follow the setup guide first.</p>
+    </div>
+    <form class="login-form" onsubmit="firstRunConnect(event)">
+      <label>Apps Script Web App URL <span style="color:var(--red)">*</span></label>
+      <input type="text" id="setupUrl" placeholder="https://script.google.com/macros/s/AKfy.../exec" required />
+      <div id="setupErr" style="display:none;color:var(--red);font-size:12px;margin-top:6px"></div>
+      <button type="submit" class="btn btn-primary" style="margin-top:14px">🔌 Test &amp; Connect</button>
+    </form>
+    <div class="login-foot">&copy; 2026 Bharat Petroleum Corporation Limited. For authorised personnel only.</div>
+  </div>
+</div>
+
+<!-- LOGIN OVERLAY (shown once cloud URL is configured) -->
+<div class="login-bg" id="loginPage" style="display:none">
   <div class="login-card">
     <div class="login-head">
       <div class="login-logo">BPCL</div>
@@ -530,23 +553,14 @@
     </div>
     <form class="login-form" onsubmit="attemptLogin(event)">
       <label>User ID <span style="color:var(--red)">*</span></label>
-      <input type="text" id="loginId" placeholder="e.g. bhupesh.bajiya" autocomplete="username" required />
+      <input type="text" id="loginId" placeholder="Your assigned user ID" autocomplete="username" required />
       <label>Password <span style="color:var(--red)">*</span></label>
       <input type="password" id="loginPwd" placeholder="Enter your password" autocomplete="current-password" required />
       <div class="login-err" id="loginErr">Invalid credentials. Please try again.</div>
       <button type="submit" class="btn btn-primary">🔒 Sign In</button>
     </form>
-    <div class="demo-creds">
-      <h4>DEMO CREDENTIALS &mdash; click to auto-fill</h4>
-      <div class="demo-row" onclick="fillDemo('bhupesh.bajiya','bpcl@123')">
-        <span><span class="role">Engineering Officer</span> &mdash; bhupesh.bajiya</span><span>bpcl@123</span>
-      </div>
-      <div class="demo-row" onclick="fillDemo('amit.sharma','bpcl@123')">
-        <span><span class="role">MST</span> &mdash; amit.sharma</span><span>bpcl@123</span>
-      </div>
-      <div class="demo-row" onclick="fillDemo('stores.vad','bpcl@123')">
-        <span><span class="role">Warehouse Staff</span> &mdash; stores.vad</span><span>bpcl@123</span>
-      </div>
+    <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px">
+      Connected to your Google Sheet. <a href="#" onclick="event.preventDefault();showSetupOverlay()" style="color:var(--bpcl-blue);text-decoration:underline">Change connection</a>
     </div>
     <div class="login-foot">&copy; 2026 Bharat Petroleum Corporation Limited. For authorised personnel only.</div>
   </div>
@@ -604,7 +618,8 @@
    ===================================================== */
 let apiUrl   = (function(){ try { return localStorage.getItem('bpcl_api_url') || ''; } catch(e){ return ''; } })();
 let apiToken = (function(){ try { return sessionStorage.getItem('bpcl_token') || ''; } catch(e){ return ''; } })();
-let cloudMode = !!apiUrl;
+// Cloud-only mode: every action goes through the Apps Script. Local fallback is disabled.
+let cloudMode = true;
 
 async function apiCall(action, params){
   if(!apiUrl) throw new Error('Cloud sync not configured. Open Settings → Cloud Sync.');
@@ -628,6 +643,9 @@ async function apiCall(action, params){
     if(/session expired/i.test(data.error||'')){
       apiToken=''; try{sessionStorage.removeItem('bpcl_token')}catch(e){}
     }
+    if(/unknown action/i.test(data.error||'')){
+      throw new Error("Server is running an old version. Open Apps Script → Deploy → Manage deployments → New version → Deploy, then refresh.");
+    }
     throw new Error(data.error || 'Server error');
   }
   return data;
@@ -635,7 +653,7 @@ async function apiCall(action, params){
 
 function setApiUrl(url){
   apiUrl = url || '';
-  cloudMode = !!apiUrl;
+  // cloudMode stays true — app is cloud-only by design
   try{ apiUrl ? localStorage.setItem('bpcl_api_url', apiUrl) : localStorage.removeItem('bpcl_api_url'); }catch(e){}
 }
 
@@ -673,42 +691,15 @@ function setSyncStatus(state){
 }
 
 /* =====================================================
-   USER DATABASE — credentials for each role
-   In a real deployment, this would be an API call to
-   BPCL's LDAP / Active Directory / auth server.
+   DATA STORES — populated from the connected Google Sheet.
+   No hardcoded data. The app refuses to function until cloud
+   sync is configured (see "Cloud Setup Required" overlay).
    ===================================================== */
-let users = {
-  "bhupesh.bajiya": {pwd:"bpcl@123", name:"Bhupesh Bajiya", role:"officer", roleLabel:"Engineering Officer", territory:"Belgaum Territory"},
-  "amit.sharma":    {pwd:"bpcl@123", name:"Amit Sharma",    role:"engineer", roleLabel:"MST (Multi Skill Technician)", territory:"Belgaum Division"},
-  "pooja.nair":     {pwd:"bpcl@123", name:"Pooja Nair",     role:"engineer", roleLabel:"MST (Multi Skill Technician)", territory:"Hubli Division"},
-  "stores.vad":     {pwd:"bpcl@123", name:"Rajesh Kumar",   role:"warehouse",roleLabel:"Warehouse Staff",    territory:"Belgaum Stores"}
-};
+let users   = {};   // populated by loadUsersFromCloud (officer only)
+let outlets = [];   // populated by loadAllFromCloud
+let tickets = [];   // populated by loadAllFromCloud
 
 let currentUser = null;
-
-/* =====================================================
-   SAMPLE DATA (in-memory — persists only in this session)
-   ===================================================== */
-let outlets = [
-  {code:"RO10234",name:"Shiv Fuels",city:"Vadodara, GJ",dealer:"Mr. Rakesh Patel",phone:"9824012345"},
-  {code:"RO10567",name:"Highway Auto Services",city:"Ahmedabad, GJ",dealer:"Mrs. Sunita Shah",phone:"9898011234"},
-  {code:"RO10890",name:"Gujarat Petroleum",city:"Surat, GJ",dealer:"Mr. Kiran Mehta",phone:"9825078901"},
-  {code:"RO11023",name:"Sardar Filling Station",city:"Rajkot, GJ",dealer:"Mr. Jignesh Vora",phone:"9824567890"},
-  {code:"RO11456",name:"Krishna Auto Fuel",city:"Bhavnagar, GJ",dealer:"Mr. Pratik Desai",phone:"9825123456"},
-  {code:"RO11789",name:"Navjivan Petro",city:"Anand, GJ",dealer:"Mrs. Heta Patel",phone:"9824998877"}
-];
-
-let tickets = [
-  {id:"TKT-2026-0142",outletCode:"RO10234",item:"Hose",make:"Gates",model:"H7434",partNo:"G-3/4-19mm",qty:2,reason:"Crack at nozzle end",description:"Visible cracks due to ageing, leakage observed",status:"Pending",raisedBy:"Amit Sharma (MST)",raisedOn:"2026-04-22",approvedBy:null,approvedOn:null,dispatchedOn:null,photos:3,timeline:[{t:"Ticket raised by Amit Sharma",d:"22-Apr-2026 10:14"}]},
-  {id:"TKT-2026-0141",outletCode:"RO10567",item:"Nozzle",make:"OPW 11A",model:"11A-0100",partNo:"OPW-11A-01",qty:1,reason:"Automatic shut-off failure",description:"Auto shut-off not triggering, reported by dealer",status:"Pending",raisedBy:"Pooja Nair (MST)",raisedOn:"2026-04-22",approvedBy:null,approvedOn:null,dispatchedOn:null,photos:2,timeline:[{t:"Ticket raised by Pooja Nair",d:"22-Apr-2026 08:45"}]},
-  {id:"TKT-2026-0140",outletCode:"RO10890",item:"Hose",make:"Continental",model:"FlexSteel",partNo:"CO-FS-20",qty:1,reason:"Burst during operation",description:"Complete rupture, replaced temporarily with spare",status:"Approved",raisedBy:"Amit Sharma (MST)",raisedOn:"2026-04-21",approvedBy:"Bhupesh Bajiya (EO)",approvedOn:"2026-04-21",dispatchedOn:null,photos:4,timeline:[{t:"Ticket raised by Amit Sharma",d:"21-Apr-2026 14:22"},{t:"Approved by Bhupesh Bajiya",d:"21-Apr-2026 17:05"}]},
-  {id:"TKT-2026-0139",outletCode:"RO11023",item:"Nozzle",make:"Husky XS",model:"XS-HD",partNo:"HK-XS-HD-02",qty:2,reason:"Swivel damaged",description:"Swivel seized, creating pressure drop",status:"Dispatched",raisedBy:"Pooja Nair (MST)",raisedOn:"2026-04-19",approvedBy:"Bhupesh Bajiya (EO)",approvedOn:"2026-04-19",dispatchedOn:"2026-04-20",photos:2,timeline:[{t:"Ticket raised by Pooja Nair",d:"19-Apr-2026 11:10"},{t:"Approved by Bhupesh Bajiya",d:"19-Apr-2026 15:30"},{t:"Dispatched from Vadodara Stores",d:"20-Apr-2026 09:15"}]},
-  {id:"TKT-2026-0138",outletCode:"RO10234",item:"Hose",make:"ELAFLEX",model:"ZVA-2",partNo:"EL-ZVA-2-6m",qty:1,reason:"Abrasion damage",description:"Outer layer worn due to friction with dispenser body",status:"Completed",raisedBy:"Amit Sharma (MST)",raisedOn:"2026-04-15",approvedBy:"Bhupesh Bajiya (EO)",approvedOn:"2026-04-15",dispatchedOn:"2026-04-16",photos:3,timeline:[{t:"Ticket raised by Amit Sharma",d:"15-Apr-2026 09:00"},{t:"Approved by Bhupesh Bajiya",d:"15-Apr-2026 11:22"},{t:"Dispatched from Vadodara Stores",d:"16-Apr-2026 14:00"},{t:"Installation confirmed at outlet",d:"17-Apr-2026 16:40"}]},
-  {id:"TKT-2026-0137",outletCode:"RO11456",item:"Nozzle",make:"Emco Wheaton",model:"A3000",partNo:"EW-A3K-01",qty:1,reason:"Leakage at trigger",description:"Trigger seal failure, drip observed",status:"Rejected",raisedBy:"Pooja Nair (MST)",raisedOn:"2026-04-14",approvedBy:"Bhupesh Bajiya (EO)",approvedOn:"2026-04-14",dispatchedOn:null,photos:1,timeline:[{t:"Ticket raised by Pooja Nair",d:"14-Apr-2026 10:30"},{t:"Rejected: Under warranty — to be claimed from OEM",d:"14-Apr-2026 16:20"}]},
-  {id:"TKT-2026-0136",outletCode:"RO11789",item:"Hose",make:"Dantec",model:"Apollo",partNo:"DT-AP-4m",qty:1,reason:"Crack at nozzle end",description:"Cracks on outer sheath",status:"Completed",raisedBy:"Amit Sharma (MST)",raisedOn:"2026-04-10",approvedBy:"Bhupesh Bajiya (EO)",approvedOn:"2026-04-10",dispatchedOn:"2026-04-11",photos:2,timeline:[{t:"Ticket raised",d:"10-Apr-2026"},{t:"Approved",d:"10-Apr-2026"},{t:"Dispatched",d:"11-Apr-2026"},{t:"Installed",d:"12-Apr-2026"}]},
-  {id:"TKT-2026-0135",outletCode:"RO10234",item:"Nozzle",make:"Gilbarco",model:"EMV-NX",partNo:"GB-EMV-01",qty:1,reason:"Automatic shut-off failure",description:"Overfilling risk during auto-stop",status:"Completed",raisedBy:"Amit Sharma (MST)",raisedOn:"2026-04-05",approvedBy:"Bhupesh Bajiya (EO)",approvedOn:"2026-04-05",dispatchedOn:"2026-04-06",photos:2,timeline:[{t:"Completed earlier this month",d:"07-Apr-2026"}]},
-  {id:"TKT-2026-0134",outletCode:"RO10234",item:"Hose",make:"Gates",model:"H7434",partNo:"G-3/4-19mm",qty:1,reason:"Burst during operation",description:"",status:"Completed",raisedBy:"Amit Sharma (MST)",raisedOn:"2026-03-28",approvedBy:"Bhupesh Bajiya (EO)",approvedOn:"2026-03-28",dispatchedOn:"2026-03-29",photos:2,timeline:[{t:"Completed in March",d:"30-Mar-2026"}]}
-];
 
 let currentRole = "officer";
 let currentPage = "dashboard";
@@ -1369,6 +1360,7 @@ function triggerDownload(text, filename){
 
 /* ---------- ENGINEER: RAISE TICKET ---------- */
 function renderRaiseTicket(){
+  currentPhotoCount = 0; // reset stale photo counter every time the form is opened
   const fe = currentUser ? currentUser.name : "MST";
   document.getElementById("main").innerHTML = `
     <div class="page-header">
@@ -1423,7 +1415,7 @@ function renderRaiseTicket(){
           </div>
           <div class="form-row">
             <label>Observed On <span class="req">*</span></label>
-            <input type="date" id="f_date" value="2026-04-23" required />
+            <input type="date" id="f_date" value="${new Date().toISOString().split('T')[0]}" required />
           </div>
         </div>
 
@@ -1499,15 +1491,26 @@ function handleFiles(files){
 function submitTicket(e){
   e.preventDefault();
   const outletCode = document.getElementById("f_outlet").value;
+  if(!outletCode){toast("Outlet required","Pick a Customer Code","error");return}
   const item = document.getElementById("f_item").value;
+  if(!item){toast("Item type required","Select Hose or Nozzle","error");return}
   const model = document.getElementById("f_model").value;
   const partNo = document.getElementById("f_part").value;
-  const qty = parseInt(document.getElementById("f_qty").value);
+  const qty = parseInt(document.getElementById("f_qty").value) || 1;
   const reason = document.getElementById("f_reason").value;
+  if(!reason){toast("Reason required","Pick a reason for replacement","error");return}
   const desc = document.getElementById("f_desc").value;
   const photos = document.querySelectorAll("#photoPreview .photo-thumb").length;
 
-  const newId = "TKT-2026-"+String(142+tickets.length+1).padStart(4,"0");
+  // Generate next ticket ID by scanning existing tickets — avoids duplicates
+  const yr = new Date().getFullYear();
+  let maxNum = 142;
+  tickets.forEach(t => {
+    const m = String(t.id||'').match(/TKT-\d{4}-(\d+)/);
+    if(m){ const n = parseInt(m[1]); if(n > maxNum) maxNum = n; }
+  });
+  const newId = `TKT-${yr}-${String(maxNum+1).padStart(4,"0")}`;
+
   const now = new Date();
   const dStr = now.toISOString().split("T")[0];
   const tStr = now.toLocaleString("en-IN",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
@@ -1519,7 +1522,7 @@ function submitTicket(e){
     approvedBy:null,approvedOn:null,dispatchedOn:null,photos,
     timeline:[{t:"Ticket raised by "+(currentUser?.name||"MST"),d:tStr}]
   });
-  alert(`✓ Ticket ${newId} submitted successfully!\n\nStatus: Pending Approval\nEngineering Officer will review shortly.`);
+  toast(`Ticket ${newId} submitted`, "Pending Engineering Officer approval", "success");
   go("mytickets");
 }
 
@@ -1637,52 +1640,61 @@ function viewTicket(id){
 
 function closeModal(){document.getElementById("modalBg").classList.remove("show")}
 
+function _todayISO(){ return new Date().toISOString().split('T')[0]; }
+function _nowDispIN(){ return new Date().toLocaleString("en-IN",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}); }
+
 function approveTicket(id){
   const t = tickets.find(x=>x.id===id);
+  if(!t) return;
   const note = prompt("Approval note (optional):","Genuine damage confirmed. Approved for dispatch.");
   if(note===null) return;
   const eoName = (currentUser?.name || "Engineering Officer");
   t.status = "Approved";
   t.approvedBy = eoName+" (EO)";
-  t.approvedOn = "2026-04-23";
-  t.timeline.push({t:"Approved by "+eoName+(note?" — "+note:""),d:"23-Apr-2026 "+new Date().toTimeString().slice(0,5)});
+  t.approvedOn = _todayISO();
+  t.timeline.push({t:"Approved by "+eoName+(note?" — "+note:""), d:_nowDispIN()});
   closeModal();
-  alert(`✓ Ticket ${id} approved.\n\nWarehouse has been notified for dispatch.`);
+  toast(`Ticket ${id} approved`, "Warehouse has been notified for dispatch", "success");
   renderMain();
 }
 
 function rejectTicket(id){
   const t = tickets.find(x=>x.id===id);
+  if(!t) return;
   const reason = prompt("Reason for rejection:","");
   if(!reason) return;
   const eoName = (currentUser?.name || "Engineering Officer");
   t.status = "Rejected";
   t.approvedBy = eoName+" (EO)";
-  t.approvedOn = "2026-04-23";
-  t.timeline.push({t:"Rejected by "+eoName+" — "+reason,d:"23-Apr-2026 "+new Date().toTimeString().slice(0,5)});
+  t.approvedOn = _todayISO();
+  t.timeline.push({t:"Rejected by "+eoName+" — "+reason, d:_nowDispIN()});
   closeModal();
-  alert(`✗ Ticket ${id} rejected.`);
+  toast(`Ticket ${id} rejected`, reason, "warn");
   renderMain();
 }
 
 function dispatchTicket(id){
   const t = tickets.find(x=>x.id===id);
-  const note = prompt("Dispatch reference (e.g. DC No.):","DC/VAD/2026/089");
+  if(!t) return;
+  const yr = new Date().getFullYear();
+  const tcode = (currentUser?.territory||"BPCL").split(/\s+/)[0].slice(0,3).toUpperCase();
+  const note = prompt("Dispatch reference (e.g. DC No.):", `DC/${tcode}/${yr}/`);
   if(!note) return;
   t.status = "Dispatched";
-  t.dispatchedOn = "2026-04-23";
-  t.timeline.push({t:"Dispatched from "+(currentUser?.territory||"Stores")+" — "+note,d:"23-Apr-2026"});
+  t.dispatchedOn = _todayISO();
+  t.timeline.push({t:"Dispatched from "+(currentUser?.territory||"Stores")+" — "+note, d:_nowDispIN()});
   closeModal();
-  alert(`📦 Ticket ${id} marked as dispatched.\n\nField engineer will confirm installation upon receipt.`);
+  toast(`Ticket ${id} dispatched`, note, "success");
   renderMain();
 }
 
 function completeTicket(id){
   const t = tickets.find(x=>x.id===id);
+  if(!t) return;
   t.status = "Completed";
-  t.timeline.push({t:"Installation confirmed at outlet",d:"23-Apr-2026"});
+  t.timeline.push({t:"Installation confirmed at outlet", d:_nowDispIN()});
   closeModal();
-  alert(`✓ Ticket ${id} marked as completed.`);
+  toast(`Ticket ${id} completed`, "Installation confirmed", "success");
   renderMain();
 }
 
@@ -1745,12 +1757,17 @@ async function connectCloud(){
 }
 
 async function disconnectCloud(){
-  if(!confirm("Disconnect from Google Sheets?\n\nApp will revert to local browser storage. Cloud data remains in your Sheet, untouched.")) return;
+  // No-op in cloud-only mode (kept as a stub so legacy callers don't error)
+  toast("Cloud-only mode","This app cannot run without a connected Sheet. Use Change URL to connect a different Sheet.","warn");
+}
+
+async function changeCloudUrl(){
+  if(!confirm("Change connection?\n\nYou will be logged out and shown the Cloud Setup screen. Your existing Sheet stays untouched.")) return;
   try{ if(apiToken) await apiCall('logout'); }catch(e){}
   setApiUrl('');
   setApiToken('');
-  toast("Disconnected","Now using local browser storage","warn");
-  renderMain();
+  // Force a hard reload so the setup overlay shows fresh
+  location.reload();
 }
 
 async function manualSync(){
@@ -1767,7 +1784,7 @@ async function manualSync(){
   }
 }
 
-/* ----- Override: LOGIN ----- */
+/* ----- Override: LOGIN — show dashboard immediately, load data in background ----- */
 const _localLogin = attemptLogin;
 attemptLogin = async function(e){
   e.preventDefault();
@@ -1784,16 +1801,23 @@ attemptLogin = async function(e){
     currentUser = {id:u.id, ...u};
     currentRole = u.role;
     currentPage = defaultPage[u.role];
-    await loadAllFromCloud();
+    // Show UI right away — don't wait for full data load
     document.getElementById("loginPage").style.display = "none";
     document.getElementById("userName").textContent = u.name;
     document.getElementById("userRole").textContent = u.roleLabel+" • "+u.territory;
     document.getElementById("userAvatar").textContent = u.name.split(" ").map(x=>x[0]).join("").substring(0,2);
     document.getElementById("syncBtn").style.display = "inline-flex";
-    setSyncStatus('ok');
     renderSidebar();
     renderMain();
-    toast("Connected to Google Sheets",`Signed in as ${u.name}`,"success");
+    toast("Signed in",`Welcome, ${u.name}. Loading data…`,"success");
+    // Fetch data in background; re-render once it arrives
+    loadAllFromCloud().then(()=>{
+      setSyncStatus('ok');
+      renderMain();
+    }).catch(ex=>{
+      setSyncStatus('err');
+      toast("Data fetch failed", ex.message, "error");
+    });
   }catch(ex){
     setSyncStatus('err');
     err.textContent = ex.message || "Login failed";
@@ -1818,16 +1842,49 @@ logout = async function(){
   window.scrollTo(0,0);
 };
 
-/* ----- Override: APPROVE / REJECT / DISPATCH / COMPLETE ----- */
-async function cloudTransition(action, ticketId, extra, optimistic){
-  setSyncStatus('busy');
+/* ----- Override: APPROVE / REJECT / DISPATCH / COMPLETE -----
+   Optimistic UI: update local state instantly, send to server in
+   the background, revert if it fails. Skips the heavy refetch. */
+async function cloudTransition(action, ticketId, extra){
+  const t = tickets.find(x => x.id === ticketId);
+  if(!t){ toast("Ticket not found", ticketId, "error"); return false; }
+
+  // Snapshot for rollback
+  const before = JSON.parse(JSON.stringify(t));
+  const today = new Date().toISOString().split('T')[0];
+  const dispTime = new Date().toLocaleString("en-IN",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  const actor = currentUser?.name || '';
+
+  // Optimistic local update
+  if (action === 'approveTicket'){
+    t.status = 'Approved';
+    t.approvedBy = actor + ' (EO)';
+    t.approvedOn = today;
+    t.timeline = (t.timeline||[]).concat([{t:"Approved by "+actor + (extra?.note?" — "+extra.note:""), d:dispTime}]);
+  } else if (action === 'rejectTicket'){
+    t.status = 'Rejected';
+    t.approvedBy = actor + ' (EO)';
+    t.approvedOn = today;
+    t.timeline = (t.timeline||[]).concat([{t:"Rejected by "+actor+" — "+(extra?.reason||""), d:dispTime}]);
+  } else if (action === 'dispatchTicket'){
+    t.status = 'Dispatched';
+    t.dispatchedOn = today;
+    t.timeline = (t.timeline||[]).concat([{t:"Dispatched from "+(currentUser?.territory||"Stores")+(extra?.dcNo?" — DC "+extra.dcNo:""), d:dispTime}]);
+  } else if (action === 'completeTicket'){
+    t.status = 'Completed';
+    t.timeline = (t.timeline||[]).concat([{t:"Installation confirmed by "+actor, d:dispTime}]);
+  }
+  renderMain();         // immediate visual feedback
+  setSyncStatus('busy'); // show that server work is still happening
+
   try{
-    await apiCall(action, Object.assign({ticketId, actorName: currentUser?.name||''}, extra||{}));
-    await loadAllFromCloud();
+    await apiCall(action, Object.assign({ticketId, actorName: actor}, extra||{}));
     setSyncStatus('ok');
-    renderMain();
     return true;
   }catch(e){
+    // Roll back local state
+    Object.assign(t, before);
+    renderMain();
     setSyncStatus('err');
     toast("Action failed", e.message, "error");
     return false;
@@ -1855,7 +1912,10 @@ rejectTicket = async function(id){
 const _localDispatch = dispatchTicket;
 dispatchTicket = async function(id){
   if(!cloudMode) return _localDispatch(id);
-  const dcNo = prompt("Dispatch reference (DC No.):","DC/VAD/2026/090");
+  const yr = new Date().getFullYear();
+  const territoryCode = (currentUser?.territory||"BPCL").split(/\s+/)[0].slice(0,3).toUpperCase();
+  const defaultDc = `DC/${territoryCode}/${yr}/`;
+  const dcNo = prompt("Dispatch reference (DC No.):", defaultDc);
   if(!dcNo) return;
   closeModal();
   if(await cloudTransition('dispatchTicket', id, {dcNo})) toast(`Ticket ${id} dispatched`, `DC ${dcNo}`, "success");
@@ -1868,7 +1928,7 @@ completeTicket = async function(id){
   if(await cloudTransition('completeTicket', id, {})) toast(`Ticket ${id} completed`, "Installation confirmed", "success");
 };
 
-/* ----- Override: SUBMIT NEW TICKET ----- */
+/* ----- Override: SUBMIT NEW TICKET (parallel uploads, no full refetch) ----- */
 const _localSubmitTicket = submitTicket;
 submitTicket = async function(e){
   e.preventDefault();
@@ -1882,19 +1942,20 @@ submitTicket = async function(e){
   const reason = document.getElementById("f_reason").value;
   const desc = document.getElementById("f_desc").value;
   const sev = document.getElementById("f_sev").value;
-  const photoEls = document.querySelectorAll("#photoPreview .photo-thumb img");
+  const photoEls = [...document.querySelectorAll("#photoPreview .photo-thumb img")];
 
   setSyncStatus('busy');
+  toast("Submitting…", photoEls.length ? `Uploading ${photoEls.length} photo(s) in parallel…` : "Saving to Google Sheets…", "info");
   try{
-    // Upload photos first (optional — skip block if none provided)
-    const photoUrls = [];
-    for(let i=0;i<photoEls.length;i++){
-      const r = await apiCall('uploadPhoto', {
-        dataUrl: photoEls[i].src,
-        filename: `${outletCode}_${Date.now()}_${i+1}`
-      });
-      if(r.url) photoUrls.push(r.url);
-    }
+    // Parallel photo uploads — much faster than sequential
+    const stamp = Date.now();
+    const photoUrls = (await Promise.all(
+      photoEls.map((el, i) => apiCall('uploadPhoto', {
+        dataUrl: el.src,
+        filename: `${outletCode}_${stamp}_${i+1}`
+      }).then(r => r.url).catch(() => null))
+    )).filter(Boolean);
+
     // Create ticket
     const r = await apiCall('createTicket', {
       ticket: {
@@ -1904,7 +1965,19 @@ submitTicket = async function(e){
         photoUrls, photoCount: photoUrls.length
       }
     });
-    await loadAllFromCloud();
+
+    // Append locally — no full refetch needed
+    const today = new Date().toISOString().split('T')[0];
+    const dispTime = new Date().toLocaleString("en-IN",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+    tickets.unshift({
+      id: r.ticketId, outletCode, item, make:"", model, partNo, qty, reason,
+      description: desc, severity: sev, status: "Pending",
+      raisedBy: (currentUser?.name||"MST")+" (MST)",
+      raisedOn: today, approvedBy: null, approvedOn: null, dispatchedOn: null,
+      photoUrls, photos: photoUrls.length,
+      timeline: [{t:"Ticket raised by "+(currentUser?.name||"MST"), d: dispTime}]
+    });
+
     setSyncStatus('ok');
     toast(`Ticket ${r.ticketId} submitted`, "Pending Engineering Officer approval", "success");
     go("mytickets");
@@ -1984,6 +2057,20 @@ saveUser = async function(e){
   if(pwd && pwd.length<6){toast("Weak password","Password must be at least 6 characters","error");return}
 
   setSyncStatus('busy');
+  // Optimistic local update — show change instantly
+  if(editId){
+    if(users[editId]){
+      users[editId].name = name;
+      users[editId].role = role;
+      users[editId].roleLabel = roleLabel;
+      users[editId].territory = territory;
+    }
+  } else {
+    users[id] = {pwd:"••••••", name, role, roleLabel, territory};
+  }
+  closeUserForm();
+  go("manageusers");
+
   try{
     if(editId){
       await apiCall('updateUser', {id:editId, name, role, roleLabel, territory, pwd:pwd||null});
@@ -1992,13 +2079,12 @@ saveUser = async function(e){
       await apiCall('createUser', {id, name, role, roleLabel, territory, pwd});
       toast("User enrolled", `${name} can now log in with ID '${id}'`, "success");
     }
-    await loadUsersFromCloud();
     setSyncStatus('ok');
-    closeUserForm();
-    go("manageusers");
   }catch(ex){
     setSyncStatus('err');
     toast("Save failed", ex.message, "error");
+    // Reload to recover real state
+    loadUsersFromCloud().then(()=>renderMain());
   }
 };
 
@@ -2007,14 +2093,19 @@ deleteUser = async function(id){
   if(!cloudMode) return _localDeleteUser(id);
   if(id===currentUser?.id){toast("Cannot remove yourself","Ask another officer to remove your account","warn");return}
   if(!confirm(`Remove user '${id}' (${users[id]?.name})?\n\nThis cannot be undone. The user will no longer be able to log in.`)) return;
+  // Optimistic remove
+  const snap = users[id];
+  delete users[id];
+  go("manageusers");
   setSyncStatus('busy');
   try{
     await apiCall('deleteUser', {id});
-    await loadUsersFromCloud();
     setSyncStatus('ok');
     toast("User removed", `'${id}' has been removed`, "success");
-    go("manageusers");
   }catch(e){
+    // Revert
+    if(snap) users[id] = snap;
+    renderMain();
     setSyncStatus('err');
     toast("Remove failed", e.message, "error");
   }
@@ -2025,45 +2116,28 @@ deleteUser = async function(id){
    Data survives page refresh; try/catch in case storage
    is unavailable (private mode / restricted env).
    ===================================================== */
-const STORE_KEY = "bpcl_tracker_v1";
+/* Cloud-only mode: localStorage is no longer used to persist tickets/outlets/users.
+   The Sheet is the single source of truth. These stubs remain so legacy callers
+   don't error if they accidentally reference them. */
+function saveState(){ /* no-op in cloud-only mode */ }
+function loadState(){ return null; /* no-op in cloud-only mode */ }
+function resetState(){ location.reload(); }
 
-function saveState(){
-  try{
-    const data = {tickets, outlets, users, session:currentUser?currentUser.id:null};
-    localStorage.setItem(STORE_KEY, JSON.stringify(data));
-  }catch(e){/* silent fail if storage unavailable */}
+/* Wrap all data mutations to also save — cloud-aware (skip saveState in cloud
+   mode and properly await the wrapped async functions to avoid races). */
+function _saveAfter(fn){
+  return async function(...args){
+    const result = await fn.apply(this, args);
+    if(!cloudMode) saveState();
+    return result;
+  };
 }
-
-function loadState(){
-  try{
-    const raw = localStorage.getItem(STORE_KEY);
-    if(!raw) return null;
-    const data = JSON.parse(raw);
-    if(data.tickets) tickets = data.tickets;
-    if(data.outlets) outlets = data.outlets;
-    if(data.users) Object.assign(users, data.users);
-    return data.session || null;
-  }catch(e){return null}
-}
-
-function resetState(){
-  try{localStorage.removeItem(STORE_KEY)}catch(e){}
-  location.reload();
-}
-
-/* Wrap all data mutations to also save */
-const _origApprove = approveTicket;
-approveTicket = function(id){_origApprove(id); saveState()};
-const _origReject = rejectTicket;
-rejectTicket = function(id){_origReject(id); saveState()};
-const _origDispatch = dispatchTicket;
-dispatchTicket = function(id){_origDispatch(id); saveState()};
-const _origComplete = completeTicket;
-completeTicket = function(id){_origComplete(id); saveState()};
-const _origSubmit = submitTicket;
-submitTicket = function(e){_origSubmit(e); saveState()};
-const _origConfirmImport = confirmImport;
-confirmImport = function(rows){_origConfirmImport(rows); saveState()};
+approveTicket    = _saveAfter(approveTicket);
+rejectTicket     = _saveAfter(rejectTicket);
+dispatchTicket   = _saveAfter(dispatchTicket);
+completeTicket   = _saveAfter(completeTicket);
+submitTicket     = _saveAfter(submitTicket);
+confirmImport    = _saveAfter(confirmImport);
 
 /* =====================================================
    TOAST NOTIFICATIONS (replaces alert)
@@ -2390,48 +2464,38 @@ function renderSettings(){
     </div>
 
     <div class="card">
-      <h3>☁ Cloud Sync &mdash; Google Sheets Backend</h3>
+      <h3>☁ Cloud Connection &mdash; Google Sheets Backend</h3>
       <div class="setting-row">
         <div class="info">
           <strong>Connection Status</strong>
-          <small>${cloudMode
-            ? 'Live data flows through your connected Google Sheet. Every action saves to Sheets in real-time.'
-            : 'Currently using local browser storage only. Connect a Google Sheet for shared multi-user data.'}</small>
+          <small>Live data flows through your connected Google Sheet. Every action saves to Sheets in real-time.</small>
         </div>
         <div>
-          <span class="cloud-status ${cloudMode?'connected':'disconnected'}">
-            ${cloudMode?'● CONNECTED':'○ NOT CONNECTED'}
-          </span>
+          <span class="cloud-status connected">● CONNECTED</span>
         </div>
       </div>
       <div class="cloud-config">
         <label>Apps Script Web App URL</label>
         <input type="text" id="apiUrlInp" placeholder="https://script.google.com/macros/s/AKfy.../exec" value="${apiUrl||''}" />
-        <div class="helper">Paste the Web App URL from your deployed Apps Script. See setup guide if you haven't deployed it yet.</div>
+        <div class="helper">The Web App URL from your deployed Apps Script. Changing this disconnects the current Sheet and connects a new one.</div>
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
           <button class="btn btn-primary btn-sm" onclick="testCloudConnection()">🔌 Test Connection</button>
-          ${cloudMode
-            ? `<button class="btn btn-danger btn-sm" onclick="disconnectCloud()">✗ Disconnect</button>
-               <button class="btn btn-secondary btn-sm" onclick="manualSync()">↻ Sync Now</button>`
-            : `<button class="btn btn-success btn-sm" onclick="connectCloud()">✓ Save &amp; Connect</button>`}
+          <button class="btn btn-secondary btn-sm" onclick="manualSync()">↻ Sync Now</button>
+          <button class="btn btn-secondary btn-sm" onclick="changeCloudUrl()">✏ Change URL</button>
         </div>
         <div id="cloudTestResult" style="margin-top:10px;font-size:12px"></div>
       </div>
     </div>
 
     <div class="card">
-      <h3>Application Data</h3>
+      <h3>Data Export</h3>
       <div class="setting-row">
-        <div class="info"><strong>Storage</strong><small>All tickets and outlets persist on this device via browser storage. Data is local to this browser only.</small></div>
+        <div class="info"><strong>Live data</strong><small>Currently loaded from your Google Sheet</small></div>
         <div>${countStorage()}</div>
       </div>
       <div class="setting-row">
-        <div class="info"><strong>Export All Data</strong><small>Download a backup of all tickets and outlets (JSON)</small></div>
-        <button class="btn btn-secondary btn-sm" onclick="exportAllData()">⬇ Export Backup</button>
-      </div>
-      <div class="setting-row">
-        <div class="info"><strong>Reset Demo Data</strong><small style="color:var(--red)">Clears all saved data and restores factory demo dataset. Cannot be undone.</small></div>
-        <button class="btn btn-danger btn-sm" onclick="confirmReset()">⟲ Reset to Defaults</button>
+        <div class="info"><strong>Export Snapshot</strong><small>Download a JSON snapshot of all tickets and outlets currently loaded. Photos remain in Google Drive.</small></div>
+        <button class="btn btn-secondary btn-sm" onclick="exportAllData()">⬇ Export Snapshot</button>
       </div>
     </div>
 
@@ -2462,16 +2526,8 @@ function countStorage(){
 }
 
 function changePassword(){
-  const cur = prompt("Enter current password:");
-  if(cur===null) return;
-  if(cur !== users[currentUser.id].pwd){toast("Incorrect password","Current password does not match","error");return}
-  const n1 = prompt("Enter new password (min 6 chars):");
-  if(!n1 || n1.length<6){toast("Invalid password","Password must be at least 6 characters","error");return}
-  const n2 = prompt("Confirm new password:");
-  if(n1!==n2){toast("Mismatch","New passwords do not match","error");return}
-  users[currentUser.id].pwd = n1;
-  saveState();
-  toast("Password changed","Your password was updated successfully","success");
+  // Local stub — overridden by the cloud version below at script load time
+  toast("Cloud connection required","Please make sure your Sheet is connected","warn");
 }
 
 function exportAllData(){
@@ -2520,7 +2576,58 @@ document.addEventListener("keydown", e=>{
 });
 
 /* =====================================================
-   INIT — splash → load state → show login if not session
+   FIRST-RUN CLOUD SETUP
+   ===================================================== */
+function showSetupOverlay(){
+  document.getElementById("loginPage").style.display = "none";
+  document.getElementById("setupPage").style.display = "flex";
+  document.getElementById("setupUrl").value = apiUrl || "";
+  document.getElementById("setupErr").style.display = "none";
+}
+
+function showLoginOverlay(){
+  document.getElementById("setupPage").style.display = "none";
+  document.getElementById("loginPage").style.display = "flex";
+}
+
+async function firstRunConnect(e){
+  e.preventDefault();
+  const url = document.getElementById("setupUrl").value.trim();
+  const errEl = document.getElementById("setupErr");
+  errEl.style.display = "none";
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(url)){
+    errEl.textContent = "URL must look like https://script.google.com/macros/s/.../exec";
+    errEl.style.display = "block";
+    return;
+  }
+  // Test the connection by calling 'ping'
+  errEl.style.display = "block";
+  errEl.style.color = "var(--muted)";
+  errEl.textContent = "Testing connection…";
+  try{
+    setApiUrl(url);
+    const res = await fetch(url, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({action:'ping'}),
+      redirect:'follow'
+    });
+    const data = await res.json();
+    if(!data.ok) throw new Error(data.error || 'Server returned an error');
+    // Success — switch to login screen
+    document.getElementById("syncBtn").style.display = "inline-flex";
+    setSyncStatus('ok');
+    toast("Connected to Google Sheets", "Now sign in with your assigned user ID", "success");
+    showLoginOverlay();
+  }catch(ex){
+    setApiUrl('');  // clear so init will show setup screen again next time
+    errEl.style.color = "var(--red)";
+    errEl.textContent = "Connection failed: " + ex.message;
+  }
+}
+
+/* =====================================================
+   INIT — splash → show setup OR login (cloud-only)
    ===================================================== */
 document.getElementById("sidebar").innerHTML = "";
 document.getElementById("main").innerHTML = "";
@@ -2531,26 +2638,15 @@ setTimeout(()=>{
   setTimeout(()=>document.getElementById("splash").remove(), 500);
 }, 1200);
 
-// Show sync button if cloud-connected
-if(cloudMode) document.getElementById("syncBtn").style.display = "inline-flex";
-
-// Local-mode: try to restore session from localStorage.
-// Cloud-mode: always require fresh login (token may have expired server-side).
-const savedSession = loadState();
-if(!cloudMode && savedSession && users[savedSession]){
-  const u = users[savedSession];
-  currentUser = {id:savedSession, ...u};
-  currentRole = u.role;
-  currentPage = defaultPage[u.role];
-  setTimeout(()=>{
-    document.getElementById("loginPage").style.display = "none";
-    document.getElementById("userName").textContent = u.name;
-    document.getElementById("userRole").textContent = u.roleLabel+" • "+u.territory;
-    document.getElementById("userAvatar").textContent = u.name.split(" ").map(x=>x[0]).join("").substring(0,2);
-    renderSidebar();
-    renderMain();
-    toast("Welcome back", `Signed in as ${u.name}`, "success");
-  }, 1200);
+// Cloud-only mode:
+//   • If no Apps Script URL is configured, show the first-run "Cloud Setup Required" overlay.
+//   • If a URL is configured, show the normal login overlay (token re-auth on every fresh open).
+if(apiUrl){
+  document.getElementById("syncBtn").style.display = "inline-flex";
+  setSyncStatus('ok');
+  showLoginOverlay();
+} else {
+  showSetupOverlay();
 }
 </script>
 
