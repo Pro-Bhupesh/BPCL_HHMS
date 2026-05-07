@@ -1,0 +1,2558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BPCL Hose &amp; Nozzle Replacement Tracker</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2300205B'/%3E%3Ccircle cx='32' cy='24' r='8' fill='%23FDB913'/%3E%3Ctext x='32' y='52' font-family='Arial,sans-serif' font-size='14' font-weight='900' fill='white' text-anchor='middle'%3EBPCL%3C/text%3E%3C/svg%3E" />
+<style>
+  :root{
+    /* BPCL official corporate palette */
+    --bpcl-blue:#00205B;        /* deep corporate navy */
+    --bpcl-blue-2:#003DA5;      /* mid blue for gradients */
+    --bpcl-blue-light:#0057B8;  /* lighter accent */
+    --bpcl-yellow:#FDB913;      /* BPCL golden yellow */
+    --bpcl-yellow-2:#F7941E;    /* warm orange-yellow accent */
+    --bpcl-dark:#00205B;
+    --bpcl-dark-2:#0a2d6b;
+    --bg:#f0f4fa;
+    --card:#ffffff;
+    --text:#1f2937;
+    --muted:#6b7280;
+    --border:#dbe3ef;
+    --green:#16a34a;
+    --amber:#f59e0b;
+    --red:#dc2626;
+    --blue:#2563eb;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;font-family:'Segoe UI',Roboto,Arial,sans-serif;
+    background:var(--bg);color:var(--text);font-size:14px;
+  }
+  /* ---------- TOP BAR ---------- */
+  .topbar{
+    background:linear-gradient(90deg,var(--bpcl-blue) 0%,var(--bpcl-blue-2) 100%);
+    color:#fff;padding:12px 24px;display:flex;align-items:center;
+    justify-content:space-between;
+    box-shadow:0 2px 8px rgba(0,32,91,.25);
+    position:sticky;top:0;z-index:100;
+    border-bottom:3px solid var(--bpcl-yellow);
+  }
+  .brand{display:flex;align-items:center;gap:14px}
+  .logo{
+    background:#fff;color:var(--bpcl-blue);
+    font-weight:900;padding:6px 10px;border-radius:6px;font-size:16px;
+    letter-spacing:1px;display:flex;align-items:center;gap:6px;
+    box-shadow:0 2px 4px rgba(0,0,0,.15);
+  }
+  .logo::before{
+    content:"";display:inline-block;width:14px;height:14px;border-radius:50%;
+    background:radial-gradient(circle,var(--bpcl-yellow) 0%,var(--bpcl-yellow-2) 100%);
+    box-shadow:0 0 6px rgba(253,185,19,.6);
+  }
+  .brand-text{line-height:1.2}
+  .brand-text .t1{font-size:16px;font-weight:700;letter-spacing:.3px}
+  .brand-text .t2{font-size:11px;opacity:.9;color:var(--bpcl-yellow);font-style:italic;font-weight:500}
+  .user-chip{
+    background:rgba(255,255,255,.15);padding:6px 14px;border-radius:20px;
+    font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;
+  }
+  .user-chip select{
+    background:transparent;color:#fff;border:none;font-weight:600;
+    outline:none;cursor:pointer;
+  }
+  .user-chip select option{color:#000}
+
+  /* ---------- LAYOUT ---------- */
+  .shell{display:flex;min-height:calc(100vh - 56px)}
+  .sidebar{
+    width:230px;
+    background:linear-gradient(180deg,var(--bpcl-blue) 0%,var(--bpcl-dark-2) 100%);
+    color:#cbd5e1;padding:20px 0;
+    flex-shrink:0;
+    border-right:1px solid rgba(253,185,19,.2);
+  }
+  .nav-title{
+    padding:8px 22px;font-size:11px;letter-spacing:1.5px;
+    text-transform:uppercase;color:#94a3b8;margin-top:10px;
+  }
+  .nav-item{
+    padding:11px 22px;cursor:pointer;display:flex;align-items:center;gap:10px;
+    border-left:3px solid transparent;transition:.15s;font-size:13.5px;
+  }
+  .nav-item:hover{background:var(--bpcl-dark-2);color:#fff}
+  .nav-item.active{
+    background:var(--bpcl-dark-2);color:#fff;border-left-color:var(--bpcl-yellow);
+    font-weight:600;
+  }
+  .nav-icon{width:18px;display:inline-block;text-align:center}
+  .main{flex:1;padding:24px 32px;overflow-x:auto}
+
+  /* ---------- PAGE HEADER ---------- */
+  .page-header{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-bottom:20px;flex-wrap:wrap;gap:12px;
+  }
+  .page-header h1{margin:0;font-size:22px;color:var(--bpcl-blue)}
+  .page-header .sub{color:var(--muted);font-size:13px;margin-top:2px}
+
+  /* ---------- BUTTONS ---------- */
+  .btn{
+    padding:8px 16px;border-radius:6px;border:none;font-weight:600;
+    cursor:pointer;font-size:13px;display:inline-flex;align-items:center;
+    gap:6px;transition:.15s;
+  }
+  .btn-primary{
+    background:linear-gradient(180deg,var(--bpcl-blue-2),var(--bpcl-blue));color:#fff;
+    box-shadow:0 1px 2px rgba(0,32,91,.25);
+  }
+  .btn-primary:hover{background:var(--bpcl-blue)}
+  .btn-accent{
+    background:linear-gradient(180deg,var(--bpcl-yellow),var(--bpcl-yellow-2));
+    color:var(--bpcl-blue);font-weight:700;
+  }
+  .btn-secondary{background:#fff;color:var(--bpcl-blue);border:1px solid var(--border)}
+  .btn-secondary:hover{background:#f0f4fa;border-color:var(--bpcl-blue-light)}
+  .btn-success{background:var(--green);color:#fff}
+  .btn-danger{background:var(--red);color:#fff}
+  .btn-sm{padding:5px 10px;font-size:12px}
+
+  /* ---------- CARDS / STATS ---------- */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin-bottom:22px}
+  .stat-card{
+    background:var(--card);padding:18px 20px;border-radius:10px;
+    box-shadow:0 1px 3px rgba(0,32,91,.06);border-top:3px solid var(--bpcl-blue-2);
+    border-left:1px solid var(--border);
+  }
+  .stat-card .label{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+  .stat-card .val{font-size:28px;font-weight:700;color:var(--bpcl-blue);margin-top:6px}
+  .stat-card .delta{font-size:11px;color:var(--muted);margin-top:4px}
+  .stat-card.amber{border-top-color:var(--bpcl-yellow-2)}
+  .stat-card.green{border-top-color:var(--green)}
+  .stat-card.blue{border-top-color:var(--bpcl-yellow)}
+
+  .card{
+    background:var(--card);border-radius:10px;padding:20px;margin-bottom:20px;
+    box-shadow:0 1px 3px rgba(0,32,91,.06);
+    border:1px solid var(--border);
+  }
+  .card h3{
+    margin:0 0 14px 0;font-size:15px;color:var(--bpcl-blue);
+    padding-bottom:8px;border-bottom:2px solid var(--bpcl-yellow);
+    display:inline-block;
+  }
+
+  /* ---------- TABLES ---------- */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{
+    background:#f9fafb;text-align:left;padding:10px 12px;font-weight:600;
+    color:var(--muted);font-size:11px;letter-spacing:.5px;text-transform:uppercase;
+    border-bottom:1px solid var(--border);
+  }
+  td{padding:11px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+  tr:hover td{background:#fafbfc}
+  .status{
+    display:inline-block;padding:3px 10px;border-radius:12px;
+    font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;
+  }
+  .s-pending{background:#fef3c7;color:#92400e}
+  .s-approved{background:#dcfce7;color:#166534}
+  .s-rejected{background:#fee2e2;color:#991b1b}
+  .s-dispatched{background:#dbeafe;color:#1e40af}
+  .s-completed{background:#e0e7ff;color:#3730a3}
+
+  /* ---------- FORMS ---------- */
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .form-row{margin-bottom:14px}
+  .form-row.full{grid-column:span 2}
+  label{display:block;font-weight:600;color:var(--text);margin-bottom:6px;font-size:12.5px}
+  label .req{color:var(--red)}
+  input[type=text],input[type=number],input[type=date],select,textarea{
+    width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:6px;
+    font-size:13px;font-family:inherit;background:#fff;
+  }
+  input:focus,select:focus,textarea:focus{
+    outline:none;border-color:var(--bpcl-blue-light);box-shadow:0 0 0 3px rgba(0,61,165,.12);
+  }
+  textarea{resize:vertical;min-height:70px}
+  .helper{color:var(--muted);font-size:11px;margin-top:3px}
+  .photo-drop{
+    border:2px dashed var(--border);border-radius:8px;padding:24px;text-align:center;
+    color:var(--muted);cursor:pointer;transition:.15s;
+  }
+  .photo-drop:hover{border-color:var(--bpcl-blue-light);background:#f0f4fa}
+  .photo-preview{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .photo-thumb{
+    width:90px;height:90px;background:#f3f4f6;border-radius:6px;
+    display:flex;align-items:center;justify-content:center;font-size:10px;
+    color:var(--muted);border:1px solid var(--border);overflow:hidden;position:relative;
+  }
+  .photo-thumb img{width:100%;height:100%;object-fit:cover}
+  .photo-thumb .rm{
+    position:absolute;top:2px;right:2px;background:var(--red);color:#fff;
+    border:none;width:18px;height:18px;border-radius:50%;font-size:11px;cursor:pointer;
+    line-height:1;
+  }
+
+  /* ---------- MODAL ---------- */
+  .modal-bg{
+    position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;
+    align-items:center;justify-content:center;z-index:200;padding:20px;
+  }
+  .modal-bg.show{display:flex}
+  .modal{
+    background:#fff;border-radius:10px;max-width:650px;width:100%;
+    max-height:90vh;overflow-y:auto;
+  }
+  .modal-head{
+    padding:16px 22px;border-bottom:1px solid var(--border);
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .modal-head{background:linear-gradient(90deg,var(--bpcl-blue),var(--bpcl-blue-2));border-radius:10px 10px 0 0;border-bottom:3px solid var(--bpcl-yellow)}
+  .modal-head h2{margin:0;font-size:17px;color:#fff;letter-spacing:.3px}
+  .modal-head .x{color:#fff}
+  .modal-head .x{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted)}
+  .modal-body{padding:20px 22px}
+  .modal-foot{
+    padding:14px 22px;border-top:1px solid var(--border);
+    display:flex;justify-content:flex-end;gap:10px;background:#fafbfc;
+  }
+
+  /* ---------- DETAIL VIEW ---------- */
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .detail-grid.full{grid-template-columns:1fr}
+  .detail-item .k{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+  .detail-item .v{font-size:14px;margin-top:3px;color:var(--text);font-weight:500}
+  .section-title{
+    font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--bpcl-blue);
+    border-bottom:2px solid var(--bpcl-yellow);padding-bottom:5px;margin:18px 0 12px 0;
+    font-weight:700;
+  }
+  .timeline{list-style:none;padding:0;margin:0}
+  .timeline li{
+    padding:8px 0 8px 22px;border-left:2px solid var(--border);margin-left:6px;
+    position:relative;
+  }
+  .timeline li::before{
+    content:"";position:absolute;left:-7px;top:12px;width:12px;height:12px;
+    border-radius:50%;background:var(--bpcl-yellow);
+    border:2px solid var(--bpcl-blue);
+  }
+  .timeline .when{font-size:11px;color:var(--muted)}
+
+  /* ---------- FILTER BAR ---------- */
+  .filter-bar{
+    display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;
+  }
+  .filter-bar input,.filter-bar select{max-width:220px}
+
+  /* ---------- CHART ---------- */
+  .bar-chart{display:flex;align-items:flex-end;gap:8px;height:180px;padding:10px 0}
+  .bar-chart .bar{
+    flex:1;background:linear-gradient(180deg,var(--bpcl-blue-light),var(--bpcl-blue));
+    border-radius:4px 4px 0 0;position:relative;min-width:24px;transition:.2s;
+  }
+  .bar-chart .bar:hover{opacity:.85}
+  .bar-chart .bar .v{
+    position:absolute;top:-18px;left:0;right:0;text-align:center;font-size:11px;
+    font-weight:600;color:var(--bpcl-blue);
+  }
+  .bar-chart .bar .lbl{
+    position:absolute;bottom:-22px;left:0;right:0;text-align:center;font-size:10px;
+    color:var(--muted);
+  }
+
+  .hidden{display:none !important}
+  .empty{text-align:center;padding:40px;color:var(--muted)}
+
+  /* ---------- LOGIN PAGE ---------- */
+  .login-bg{
+    position:fixed;inset:0;z-index:500;
+    background:linear-gradient(135deg,var(--bpcl-blue) 0%,var(--bpcl-blue-2) 100%);
+    display:flex;align-items:center;justify-content:center;padding:20px;
+    overflow-y:auto;
+  }
+  .login-bg::before{
+    content:"";position:absolute;inset:0;
+    background:radial-gradient(circle at 10% 20%,rgba(253,185,19,.08),transparent 40%),
+               radial-gradient(circle at 90% 80%,rgba(253,185,19,.06),transparent 40%);
+    pointer-events:none;
+  }
+  .login-card{
+    background:#fff;border-radius:14px;max-width:430px;width:100%;
+    padding:36px 34px;box-shadow:0 20px 50px rgba(0,0,0,.35);
+    border-top:5px solid var(--bpcl-yellow);position:relative;z-index:1;
+  }
+  .login-head{text-align:center;margin-bottom:24px}
+  .login-logo{
+    display:inline-flex;align-items:center;gap:10px;
+    background:var(--bpcl-blue);color:#fff;padding:11px 20px;
+    border-radius:10px;font-weight:900;font-size:24px;letter-spacing:2px;
+    box-shadow:0 4px 10px rgba(0,32,91,.3);
+  }
+  .login-logo::before{
+    content:"";display:inline-block;width:18px;height:18px;border-radius:50%;
+    background:radial-gradient(circle,var(--bpcl-yellow) 0%,var(--bpcl-yellow-2) 100%);
+    box-shadow:0 0 10px rgba(253,185,19,.9);
+  }
+  .login-title{font-size:17px;color:var(--bpcl-blue);font-weight:700;margin-top:16px}
+  .login-sub{font-size:12px;color:var(--muted);margin-top:3px}
+  .login-tag{
+    color:var(--bpcl-yellow-2);font-style:italic;font-size:12px;margin-top:4px;
+    font-weight:600;letter-spacing:.5px;
+  }
+  .login-form label{margin-top:14px}
+  .login-form .btn{
+    width:100%;padding:11px;justify-content:center;margin-top:20px;
+    font-size:14px;letter-spacing:.5px;
+  }
+  .login-err{
+    background:#fee2e2;color:#991b1b;padding:9px 12px;border-radius:6px;
+    font-size:12px;margin-top:12px;display:none;border-left:3px solid var(--red);
+  }
+  .login-err.show{display:block}
+  .demo-creds{
+    margin-top:22px;padding-top:16px;border-top:1px dashed var(--border);
+    font-size:11px;color:var(--muted);
+  }
+  .demo-creds h4{margin:0 0 8px 0;color:var(--bpcl-blue);font-size:12px;letter-spacing:.5px}
+  .demo-row{
+    padding:5px 8px;font-family:'Courier New',monospace;background:#f0f4fa;
+    border-radius:4px;margin-bottom:4px;display:flex;justify-content:space-between;
+    cursor:pointer;transition:.15s;
+  }
+  .demo-row:hover{background:#e0e9f5}
+  .demo-row .role{color:var(--bpcl-blue);font-weight:700}
+  .login-foot{
+    text-align:center;margin-top:14px;font-size:10.5px;color:var(--muted);
+  }
+
+  /* ---------- IMPORT UI ---------- */
+  .import-tabs{display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid var(--border)}
+  .import-tab{
+    padding:9px 18px;cursor:pointer;font-size:13px;font-weight:600;
+    color:var(--muted);border-bottom:2px solid transparent;
+  }
+  .import-tab.active{color:var(--bpcl-blue);border-bottom-color:var(--bpcl-yellow)}
+  .import-tab:hover{color:var(--bpcl-blue)}
+  .import-panel{display:none}
+  .import-panel.active{display:block}
+  .csv-box{
+    width:100%;font-family:'Courier New',monospace;font-size:12px;
+    min-height:130px;
+  }
+  .preview-stats{
+    display:flex;gap:14px;margin-bottom:10px;font-size:13px;flex-wrap:wrap;
+  }
+  .preview-stat{
+    padding:6px 12px;background:#f0f4fa;border-radius:16px;
+    color:var(--bpcl-blue);font-weight:600;
+  }
+  .preview-stat.warn{background:#fef3c7;color:#92400e}
+  .preview-stat.err{background:#fee2e2;color:#991b1b}
+
+  /* logout/user display */
+  .user-info{
+    background:rgba(255,255,255,.12);padding:6px 14px;border-radius:20px;
+    font-size:13px;display:flex;align-items:center;gap:10px;
+  }
+  .user-info .avatar{
+    width:28px;height:28px;border-radius:50%;background:var(--bpcl-yellow);
+    color:var(--bpcl-blue);display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:12px;
+  }
+  .user-info .uname{font-weight:600;line-height:1.1}
+  .user-info .urole{font-size:10px;opacity:.85;letter-spacing:.3px;text-transform:uppercase}
+  .logout-btn{
+    background:transparent;border:1px solid rgba(255,255,255,.3);
+    color:#fff;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;
+    margin-left:8px;
+  }
+  .logout-btn:hover{background:rgba(255,255,255,.15)}
+  #syncIndicator{font-size:10px;display:inline-block}
+  #syncIndicator.sync-ok{color:#4ade80}
+  #syncIndicator.sync-busy{color:var(--bpcl-yellow);animation:pulse 1s infinite}
+  #syncIndicator.sync-err{color:#f87171}
+  #syncIndicator.sync-off{color:#6b7280}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+  /* Cloud config inputs */
+  .cloud-config{
+    background:#f0f4fa;padding:14px;border-radius:8px;margin-top:10px;
+    border-left:3px solid var(--bpcl-blue);
+  }
+  .cloud-config input[type=text]{font-family:'Courier New',monospace;font-size:12px}
+  .cloud-status{
+    display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;
+    font-weight:700;letter-spacing:.3px;
+  }
+  .cloud-status.connected{background:#dcfce7;color:#166534}
+  .cloud-status.disconnected{background:#fee2e2;color:#991b1b}
+  .inline-actions{display:flex;gap:6px}
+  .alert{
+    padding:12px 16px;border-radius:8px;margin-bottom:14px;font-size:13px;
+    border-left:4px solid var(--amber);background:#fffbeb;color:#92400e;
+  }
+  .alert.info{border-left-color:var(--blue);background:#eff6ff;color:#1e40af}
+  /* ---------- NAV BADGES ---------- */
+  .nav-badge{
+    margin-left:auto;background:var(--bpcl-yellow);color:var(--bpcl-blue);
+    font-size:10px;font-weight:800;padding:2px 7px;border-radius:10px;min-width:20px;
+    text-align:center;letter-spacing:0;
+  }
+  .nav-badge.red{background:#ef4444;color:#fff}
+
+  /* ---------- TOASTS ---------- */
+  #toastBox{
+    position:fixed;top:80px;right:20px;z-index:400;display:flex;
+    flex-direction:column;gap:10px;max-width:360px;pointer-events:none;
+  }
+  .toast{
+    background:#fff;border-radius:8px;padding:12px 14px;min-width:260px;
+    box-shadow:0 6px 20px rgba(0,0,0,.15);border-left:4px solid var(--bpcl-blue);
+    display:flex;align-items:flex-start;gap:10px;font-size:13px;
+    transform:translateX(400px);transition:transform .3s cubic-bezier(.2,.8,.3,1);
+    pointer-events:auto;
+  }
+  .toast.show{transform:translateX(0)}
+  .toast.success{border-left-color:var(--green)}
+  .toast.error{border-left-color:var(--red)}
+  .toast.warn{border-left-color:var(--amber)}
+  .toast .ico{
+    width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;
+    align-items:center;justify-content:center;color:#fff;font-weight:700;
+    background:var(--bpcl-blue);
+  }
+  .toast.success .ico{background:var(--green)}
+  .toast.error .ico{background:var(--red)}
+  .toast.warn .ico{background:var(--amber)}
+  .toast .body{flex:1;line-height:1.35}
+  .toast .body strong{display:block;color:var(--bpcl-blue);margin-bottom:2px;font-size:13px}
+  .toast .body small{color:var(--muted);font-size:11.5px}
+  .toast .close{
+    background:none;border:none;color:var(--muted);cursor:pointer;
+    font-size:16px;padding:0;
+  }
+
+  /* ---------- SPLASH ---------- */
+  #splash{
+    position:fixed;inset:0;background:linear-gradient(135deg,var(--bpcl-blue),var(--bpcl-blue-2));
+    display:flex;align-items:center;justify-content:center;z-index:600;
+    transition:opacity .4s;
+  }
+  #splash.hidden{opacity:0;pointer-events:none}
+  .splash-inner{text-align:center;color:#fff}
+  .splash-logo{
+    display:inline-flex;align-items:center;gap:12px;
+    background:#fff;color:var(--bpcl-blue);padding:14px 22px;
+    border-radius:12px;font-weight:900;font-size:28px;letter-spacing:3px;
+    box-shadow:0 8px 25px rgba(0,0,0,.3);margin-bottom:18px;
+    animation:splashPulse 1.2s ease-in-out infinite;
+  }
+  .splash-logo::before{
+    content:"";width:22px;height:22px;border-radius:50%;
+    background:radial-gradient(circle,var(--bpcl-yellow),var(--bpcl-yellow-2));
+    box-shadow:0 0 14px var(--bpcl-yellow);
+  }
+  @keyframes splashPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+  .splash-title{font-size:16px;font-weight:600;margin-bottom:4px}
+  .splash-tag{font-size:12px;color:var(--bpcl-yellow);font-style:italic;letter-spacing:1px}
+  .splash-bar{
+    width:200px;height:3px;background:rgba(255,255,255,.2);border-radius:2px;
+    margin:24px auto 0;overflow:hidden;
+  }
+  .splash-bar div{
+    height:100%;background:var(--bpcl-yellow);
+    animation:splashLoad 1.2s ease-out forwards;
+  }
+  @keyframes splashLoad{from{width:0}to{width:100%}}
+
+  /* ---------- SETTINGS / ACCOUNT ---------- */
+  .settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .setting-row{
+    padding:14px 0;border-bottom:1px solid var(--border);
+    display:flex;justify-content:space-between;align-items:center;gap:14px;
+  }
+  .setting-row:last-child{border-bottom:none}
+  .setting-row .info{flex:1}
+  .setting-row .info strong{color:var(--bpcl-blue);font-size:13.5px;display:block;margin-bottom:2px}
+  .setting-row .info small{color:var(--muted);font-size:12px}
+
+  /* ---------- PRINT ---------- */
+  @media print{
+    body{background:#fff}
+    .topbar,.sidebar,.page-header button,.modal-foot,.logout-btn,.user-info,
+    .filter-bar,.btn,.import-tabs,.nav-badge,#toastBox,#splash{display:none !important}
+    .shell,.main{display:block;padding:0}
+    .card{box-shadow:none;border:1px solid #ccc;page-break-inside:avoid}
+    .section-title{color:#000;border-bottom-color:#000}
+    .status{border:1px solid #333}
+  }
+
+  @media (max-width:768px){
+    .form-grid{grid-template-columns:1fr}
+    .form-row.full{grid-column:span 1}
+    .settings-grid{grid-template-columns:1fr}
+    .sidebar{width:60px}
+    .nav-item span.nav-text,.nav-badge{display:none}
+    .nav-title{display:none}
+    .main{padding:16px}
+    .brand-text .t2{display:none}
+    .user-info .uname,.user-info .urole{display:none}
+    #toastBox{right:10px;left:10px;max-width:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="splash-inner">
+    <div class="splash-logo">BPCL</div>
+    <div class="splash-title">Hose &amp; Nozzle Replacement Tracker</div>
+    <div class="splash-tag">Energising Lives</div>
+    <div class="splash-bar"><div></div></div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toastBox"></div>
+
+<!-- LOGIN OVERLAY -->
+<div class="login-bg" id="loginPage">
+  <div class="login-card">
+    <div class="login-head">
+      <div class="login-logo">BPCL</div>
+      <div class="login-title">Hose &amp; Nozzle Replacement Tracker</div>
+      <div class="login-sub">Engineering Division &bull; Retail Service Management</div>
+      <div class="login-tag">Energising Lives</div>
+    </div>
+    <form class="login-form" onsubmit="attemptLogin(event)">
+      <label>User ID <span style="color:var(--red)">*</span></label>
+      <input type="text" id="loginId" placeholder="e.g. bhupesh.bajiya" autocomplete="username" required />
+      <label>Password <span style="color:var(--red)">*</span></label>
+      <input type="password" id="loginPwd" placeholder="Enter your password" autocomplete="current-password" required />
+      <div class="login-err" id="loginErr">Invalid credentials. Please try again.</div>
+      <button type="submit" class="btn btn-primary">🔒 Sign In</button>
+    </form>
+    <div class="demo-creds">
+      <h4>DEMO CREDENTIALS &mdash; click to auto-fill</h4>
+      <div class="demo-row" onclick="fillDemo('bhupesh.bajiya','bpcl@123')">
+        <span><span class="role">Engineering Officer</span> &mdash; bhupesh.bajiya</span><span>bpcl@123</span>
+      </div>
+      <div class="demo-row" onclick="fillDemo('amit.sharma','bpcl@123')">
+        <span><span class="role">MST</span> &mdash; amit.sharma</span><span>bpcl@123</span>
+      </div>
+      <div class="demo-row" onclick="fillDemo('stores.vad','bpcl@123')">
+        <span><span class="role">Warehouse Staff</span> &mdash; stores.vad</span><span>bpcl@123</span>
+      </div>
+    </div>
+    <div class="login-foot">&copy; 2026 Bharat Petroleum Corporation Limited. For authorised personnel only.</div>
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="logo">BPCL</div>
+    <div class="brand-text">
+      <div class="t1">Bharat Petroleum &mdash; Hose &amp; Nozzle Replacement Tracker</div>
+      <div class="t2">Energising Lives &bull; Engineering Division, Retail Service Management</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button id="syncBtn" class="logout-btn" onclick="manualSync()" title="Sync with Google Sheets" style="display:none">
+      <span id="syncIndicator" class="sync-ok">●</span> Sync
+    </button>
+    <div class="user-info" id="userInfo">
+      <div class="avatar" id="userAvatar">U</div>
+      <div>
+        <div class="uname" id="userName">-</div>
+        <div class="urole" id="userRole">-</div>
+      </div>
+    </div>
+    <button class="logout-btn" onclick="logout()" title="Logout">⎋ Logout</button>
+  </div>
+</div>
+
+<div class="shell">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar"></aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main" id="main"></main>
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="modalTitle">Ticket</h2>
+      <button class="x" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot" id="modalFoot"></div>
+  </div>
+</div>
+
+<script>
+/* =====================================================
+   CLOUD SYNC — Google Apps Script Web App backend
+   Configure URL in Settings → Cloud Sync.
+   When configured, all data flows through the connected
+   Google Sheet instead of local browser storage.
+   ===================================================== */
+let apiUrl   = (function(){ try { return localStorage.getItem('bpcl_api_url') || ''; } catch(e){ return ''; } })();
+let apiToken = (function(){ try { return sessionStorage.getItem('bpcl_token') || ''; } catch(e){ return ''; } })();
+let cloudMode = !!apiUrl;
+
+async function apiCall(action, params){
+  if(!apiUrl) throw new Error('Cloud sync not configured. Open Settings → Cloud Sync.');
+  const body = Object.assign({action, token: apiToken}, params||{});
+  let res;
+  try{
+    res = await fetch(apiUrl, {
+      method:'POST',
+      // text/plain avoids CORS preflight on Apps Script Web Apps
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify(body),
+      redirect:'follow'
+    });
+  }catch(e){
+    throw new Error('Network error — check your internet connection');
+  }
+  let data;
+  try{ data = await res.json(); }
+  catch(e){ throw new Error('Server returned invalid response. Check the API URL.'); }
+  if(!data.ok){
+    if(/session expired/i.test(data.error||'')){
+      apiToken=''; try{sessionStorage.removeItem('bpcl_token')}catch(e){}
+    }
+    throw new Error(data.error || 'Server error');
+  }
+  return data;
+}
+
+function setApiUrl(url){
+  apiUrl = url || '';
+  cloudMode = !!apiUrl;
+  try{ apiUrl ? localStorage.setItem('bpcl_api_url', apiUrl) : localStorage.removeItem('bpcl_api_url'); }catch(e){}
+}
+
+function setApiToken(t){
+  apiToken = t || '';
+  try{ apiToken ? sessionStorage.setItem('bpcl_token', apiToken) : sessionStorage.removeItem('bpcl_token'); }catch(e){}
+}
+
+async function loadAllFromCloud(){
+  const calls = [apiCall('getTickets'), apiCall('getOutlets')];
+  // Officers also fetch the user list for the Enroll Users page
+  if(currentUser && currentUser.role==='officer'){
+    calls.push(apiCall('getUsers').catch(()=>({users:null})));
+  }
+  const results = await Promise.all(calls);
+  const [tRes, oRes, uRes] = results;
+  if(tRes.tickets) tickets = tRes.tickets;
+  if(oRes.outlets) outlets = oRes.outlets;
+  if(uRes && uRes.users){
+    users = {};
+    uRes.users.forEach(u => {
+      users[u.id] = {pwd:"••••••", name:u.name, role:u.role, roleLabel:u.roleLabel, territory:u.territory};
+    });
+  }
+}
+
+/* Sync indicator in topbar (only visible in cloud mode) */
+function setSyncStatus(state){
+  const el = document.getElementById('syncIndicator');
+  if(!el) return;
+  el.className = 'sync-' + state;
+  el.title = state==='ok' ? 'Connected to Google Sheets' :
+             state==='busy' ? 'Syncing…' :
+             state==='err' ? 'Sync error' : 'Offline';
+}
+
+/* =====================================================
+   USER DATABASE — credentials for each role
+   In a real deployment, this would be an API call to
+   BPCL's LDAP / Active Directory / auth server.
+   ===================================================== */
+let users = {
+  "bhupesh.bajiya": {pwd:"bpcl@123", name:"Bhupesh Bajiya", role:"officer", roleLabel:"Engineering Officer", territory:"Belgaum Territory"},
+  "amit.sharma":    {pwd:"bpcl@123", name:"Amit Sharma",    role:"engineer", roleLabel:"MST (Multi Skill Technician)", territory:"Belgaum Division"},
+  "pooja.nair":     {pwd:"bpcl@123", name:"Pooja Nair",     role:"engineer", roleLabel:"MST (Multi Skill Technician)", territory:"Hubli Division"},
+  "stores.vad":     {pwd:"bpcl@123", name:"Rajesh Kumar",   role:"warehouse",roleLabel:"Warehouse Staff",    territory:"Belgaum Stores"}
+};
+
+let currentUser = null;
+
+/* =====================================================
+   SAMPLE DATA (in-memory — persists only in this session)
+   ===================================================== */
+let outlets = [
+  {code:"RO10234",name:"Shiv Fuels",city:"Vadodara, GJ",dealer:"Mr. Rakesh Patel",phone:"9824012345"},
+  {code:"RO10567",name:"Highway Auto Services",city:"Ahmedabad, GJ",dealer:"Mrs. Sunita Shah",phone:"9898011234"},
+  {code:"RO10890",name:"Gujarat Petroleum",city:"Surat, GJ",dealer:"Mr. Kiran Mehta",phone:"9825078901"},
+  {code:"RO11023",name:"Sardar Filling Station",city:"Rajkot, GJ",dealer:"Mr. Jignesh Vora",phone:"9824567890"},
+  {code:"RO11456",name:"Krishna Auto Fuel",city:"Bhavnagar, GJ",dealer:"Mr. Pratik Desai",phone:"9825123456"},
+  {code:"RO11789",name:"Navjivan Petro",city:"Anand, GJ",dealer:"Mrs. Heta Patel",phone:"9824998877"}
+];
+
+let tickets = [
+  {id:"TKT-2026-0142",outletCode:"RO10234",item:"Hose",make:"Gates",model:"H7434",partNo:"G-3/4-19mm",qty:2,reason:"Crack at nozzle end",description:"Visible cracks due to ageing, leakage observed",status:"Pending",raisedBy:"Amit Sharma (MST)",raisedOn:"2026-04-22",approvedBy:null,approvedOn:null,dispatchedOn:null,photos:3,timeline:[{t:"Ticket raised by Amit Sharma",d:"22-Apr-2026 10:14"}]},
+  {id:"TKT-2026-0141",outletCode:"RO10567",item:"Nozzle",make:"OPW 11A",model:"11A-0100",partNo:"OPW-11A-01",qty:1,reason:"Automatic shut-off failure",description:"Auto shut-off not triggering, reported by dealer",status:"Pending",raisedBy:"Pooja Nair (MST)",raisedOn:"2026-04-22",approvedBy:null,approvedOn:null,dispatchedOn:null,photos:2,timeline:[{t:"Ticket raised by Pooja Nair",d:"22-Apr-2026 08:45"}]},
+  {id:"TKT-2026-0140",outletCode:"RO10890",item:"Hose",make:"Continental",model:"FlexSteel",partNo:"CO-FS-20",qty:1,reason:"Burst during operation",description:"Complete rupture, replaced temporarily with spare",status:"Approved",raisedBy:"Amit Sharma (MST)",raisedOn:"2026-04-21",approvedBy:"Bhupesh Bajiya (EO)",approvedOn:"2026-04-21",dispatchedOn:null,photos:4,timeline:[{t:"Ticket raised by Amit Sharma",d:"21-Apr-2026 14:22"},{t:"Approved by Bhupesh Bajiya",d:"21-Apr-2026 17:05"}]},
+  {id:"TKT-2026-0139",outletCode:"RO11023",item:"Nozzle",make:"Husky XS",model:"XS-HD",partNo:"HK-XS-HD-02",qty:2,reason:"Swivel damaged",description:"Swivel seized, creating pressure drop",status:"Dispatched",raisedBy:"Pooja Nair (MST)",raisedOn:"2026-04-19",approvedBy:"Bhupesh Bajiya (EO)",approvedOn:"2026-04-19",dispatchedOn:"2026-04-20",photos:2,timeline:[{t:"Ticket raised by Pooja Nair",d:"19-Apr-2026 11:10"},{t:"Approved by Bhupesh Bajiya",d:"19-Apr-2026 15:30"},{t:"Dispatched from Vadodara Stores",d:"20-Apr-2026 09:15"}]},
+  {id:"TKT-2026-0138",outletCode:"RO10234",item:"Hose",make:"ELAFLEX",model:"ZVA-2",partNo:"EL-ZVA-2-6m",qty:1,reason:"Abrasion damage",description:"Outer layer worn due to friction with dispenser body",status:"Completed",raisedBy:"Amit Sharma (MST)",raisedOn:"2026-04-15",approvedBy:"Bhupesh Bajiya (EO)",approvedOn:"2026-04-15",dispatchedOn:"2026-04-16",photos:3,timeline:[{t:"Ticket raised by Amit Sharma",d:"15-Apr-2026 09:00"},{t:"Approved by Bhupesh Bajiya",d:"15-Apr-2026 11:22"},{t:"Dispatched from Vadodara Stores",d:"16-Apr-2026 14:00"},{t:"Installation confirmed at outlet",d:"17-Apr-2026 16:40"}]},
+  {id:"TKT-2026-0137",outletCode:"RO11456",item:"Nozzle",make:"Emco Wheaton",model:"A3000",partNo:"EW-A3K-01",qty:1,reason:"Leakage at trigger",description:"Trigger seal failure, drip observed",status:"Rejected",raisedBy:"Pooja Nair (MST)",raisedOn:"2026-04-14",approvedBy:"Bhupesh Bajiya (EO)",approvedOn:"2026-04-14",dispatchedOn:null,photos:1,timeline:[{t:"Ticket raised by Pooja Nair",d:"14-Apr-2026 10:30"},{t:"Rejected: Under warranty — to be claimed from OEM",d:"14-Apr-2026 16:20"}]},
+  {id:"TKT-2026-0136",outletCode:"RO11789",item:"Hose",make:"Dantec",model:"Apollo",partNo:"DT-AP-4m",qty:1,reason:"Crack at nozzle end",description:"Cracks on outer sheath",status:"Completed",raisedBy:"Amit Sharma (MST)",raisedOn:"2026-04-10",approvedBy:"Bhupesh Bajiya (EO)",approvedOn:"2026-04-10",dispatchedOn:"2026-04-11",photos:2,timeline:[{t:"Ticket raised",d:"10-Apr-2026"},{t:"Approved",d:"10-Apr-2026"},{t:"Dispatched",d:"11-Apr-2026"},{t:"Installed",d:"12-Apr-2026"}]},
+  {id:"TKT-2026-0135",outletCode:"RO10234",item:"Nozzle",make:"Gilbarco",model:"EMV-NX",partNo:"GB-EMV-01",qty:1,reason:"Automatic shut-off failure",description:"Overfilling risk during auto-stop",status:"Completed",raisedBy:"Amit Sharma (MST)",raisedOn:"2026-04-05",approvedBy:"Bhupesh Bajiya (EO)",approvedOn:"2026-04-05",dispatchedOn:"2026-04-06",photos:2,timeline:[{t:"Completed earlier this month",d:"07-Apr-2026"}]},
+  {id:"TKT-2026-0134",outletCode:"RO10234",item:"Hose",make:"Gates",model:"H7434",partNo:"G-3/4-19mm",qty:1,reason:"Burst during operation",description:"",status:"Completed",raisedBy:"Amit Sharma (MST)",raisedOn:"2026-03-28",approvedBy:"Bhupesh Bajiya (EO)",approvedOn:"2026-03-28",dispatchedOn:"2026-03-29",photos:2,timeline:[{t:"Completed in March",d:"30-Mar-2026"}]}
+];
+
+let currentRole = "officer";
+let currentPage = "dashboard";
+let selectedTicketId = null;
+let currentPhotoCount = 0;
+
+/* =====================================================
+   NAV DEFINITIONS PER ROLE
+   ===================================================== */
+const navConfig = {
+  officer: [
+    {title:"MAIN"},
+    {id:"dashboard",icon:"▣",label:"Dashboard"},
+    {id:"pending",icon:"⏱",label:"Pending Approvals",badge:()=>tickets.filter(t=>t.status==="Pending").length},
+    {id:"alltickets",icon:"📋",label:"All Tickets"},
+    {title:"REPORTS"},
+    {id:"history",icon:"📜",label:"Outlet History"},
+    {id:"frequency",icon:"📊",label:"Frequency Analysis"},
+    {id:"monthly",icon:"📈",label:"Monthly Consumption"},
+    {title:"MASTERS"},
+    {id:"outlets",icon:"⛽",label:"Retail Outlets",badge:()=>outlets.length},
+    {id:"importoutlets",icon:"⬆",label:"Import Outlets"},
+    {id:"manageusers",icon:"👥",label:"Enroll Users",badge:()=>Object.keys(users).length},
+    {title:"ACCOUNT"},
+    {id:"settings",icon:"⚙",label:"Settings"}
+  ],
+  engineer: [
+    {title:"MAIN"},
+    {id:"dashboard",icon:"▣",label:"Dashboard"},
+    {id:"raise",icon:"＋",label:"Raise New Ticket"},
+    {id:"mytickets",icon:"📋",label:"My Tickets",badge:()=>{
+      const fn = currentUser?.name?.split(" ")[0]||"";
+      return tickets.filter(t=>t.raisedBy.startsWith(fn)).length;
+    }},
+    {id:"history",icon:"📜",label:"Outlet History"},
+    {title:"ACCOUNT"},
+    {id:"settings",icon:"⚙",label:"Settings"}
+  ],
+  warehouse: [
+    {title:"MAIN"},
+    {id:"dashboard",icon:"▣",label:"Dashboard"},
+    {id:"dispatchqueue",icon:"📦",label:"Dispatch Queue",badge:()=>tickets.filter(t=>t.status==="Approved").length,badgeRed:true},
+    {id:"dispatched",icon:"✓",label:"Dispatched"},
+    {id:"monthly",icon:"📈",label:"Monthly Consumption"},
+    {title:"ACCOUNT"},
+    {id:"settings",icon:"⚙",label:"Settings"}
+  ]
+};
+
+const defaultPage = {officer:"dashboard",engineer:"dashboard",warehouse:"dashboard"};
+
+/* =====================================================
+   RENDERING
+   ===================================================== */
+function renderSidebar(){
+  const items = navConfig[currentRole] || [];
+  const html = items.map(it=>{
+    if(it.title) return `<div class="nav-title">${it.title}</div>`;
+    const active = currentPage===it.id?"active":"";
+    let badge = "";
+    if(it.badge){
+      const v = it.badge();
+      if(v>0) badge = `<span class="nav-badge${it.badgeRed?' red':''}">${v}</span>`;
+    }
+    return `<div class="nav-item ${active}" onclick="go('${it.id}')">
+      <span class="nav-icon">${it.icon}</span><span class="nav-text">${it.label}</span>${badge}
+    </div>`;
+  }).join("");
+  document.getElementById("sidebar").innerHTML = html;
+}
+
+function go(page){
+  currentPage = page;
+  renderSidebar();
+  renderMain();
+  window.scrollTo(0,0);
+}
+
+function switchRole(r){
+  // legacy helper — kept for compatibility
+  currentRole = r;
+  currentPage = defaultPage[r];
+  renderSidebar();
+  renderMain();
+}
+
+/* =====================================================
+   LOGIN / LOGOUT
+   ===================================================== */
+function fillDemo(id,pwd){
+  document.getElementById("loginId").value = id;
+  document.getElementById("loginPwd").value = pwd;
+}
+
+function attemptLogin(e){
+  e.preventDefault();
+  const id = document.getElementById("loginId").value.trim().toLowerCase();
+  const pwd = document.getElementById("loginPwd").value;
+  const err = document.getElementById("loginErr");
+  const u = users[id];
+  if(!u || u.pwd!==pwd){
+    err.textContent = "Invalid User ID or Password. Please try again.";
+    err.classList.add("show");
+    return;
+  }
+  // successful login
+  err.classList.remove("show");
+  currentUser = {id, ...u};
+  currentRole = u.role;
+  currentPage = defaultPage[u.role];
+  document.getElementById("loginPage").style.display = "none";
+  // fill top bar
+  document.getElementById("userName").textContent = u.name;
+  document.getElementById("userRole").textContent = u.roleLabel+" • "+u.territory;
+  document.getElementById("userAvatar").textContent = u.name.split(" ").map(x=>x[0]).join("").substring(0,2);
+  renderSidebar();
+  renderMain();
+  saveState && saveState();
+  if(typeof toast==="function") toast("Signed in successfully", `Welcome, ${u.name}`, "success");
+}
+
+function logout(){
+  if(!confirm("Are you sure you want to logout?")) return;
+  currentUser = null;
+  saveState && saveState();
+  document.getElementById("loginId").value = "";
+  document.getElementById("loginPwd").value = "";
+  document.getElementById("loginErr").classList.remove("show");
+  document.getElementById("loginPage").style.display = "flex";
+  window.scrollTo(0,0);
+}
+
+function renderMain(){
+  const m = document.getElementById("main");
+  renderSidebar();  // refresh badge counts
+  const key = currentRole+":"+currentPage;
+  const renderers = {
+    "officer:dashboard":renderOfficerDashboard,
+    "officer:pending":renderPendingApprovals,
+    "officer:alltickets":renderAllTickets,
+    "officer:history":renderOutletHistory,
+    "officer:frequency":renderFrequency,
+    "officer:monthly":renderMonthly,
+    "officer:outlets":renderOutlets,
+    "officer:importoutlets":renderImportOutlets,
+    "officer:manageusers":renderManageUsers,
+    "officer:settings":renderSettings,
+    "engineer:dashboard":renderEngineerDashboard,
+    "engineer:raise":renderRaiseTicket,
+    "engineer:mytickets":renderMyTickets,
+    "engineer:history":renderOutletHistory,
+    "engineer:settings":renderSettings,
+    "warehouse:dashboard":renderWarehouseDashboard,
+    "warehouse:dispatchqueue":renderDispatchQueue,
+    "warehouse:dispatched":renderDispatched,
+    "warehouse:monthly":renderMonthly,
+    "warehouse:settings":renderSettings
+  };
+  (renderers[key] || (()=>{m.innerHTML="<div class='empty'>Page not found</div>"}))();
+}
+
+/* ---------- OFFICER: DASHBOARD ---------- */
+function renderOfficerDashboard(){
+  const pending = tickets.filter(t=>t.status==="Pending").length;
+  const approved = tickets.filter(t=>t.status==="Approved").length;
+  const thisMonth = tickets.filter(t=>t.raisedOn.startsWith("2026-04")).length;
+  const rejected = tickets.filter(t=>t.status==="Rejected").length;
+  const recent = tickets.slice(0,5);
+
+  document.getElementById("main").innerHTML = `
+    <div class="page-header">
+      <div>
+        <h1>Dashboard</h1>
+        <div class="sub">Welcome back, ${currentUser?.name?.split(" ")[0]||"Officer"} &mdash; ${currentUser?.roleLabel||"Engineering Officer"}, ${currentUser?.territory||""}</div>
+      </div>
+      <button class="btn btn-primary" onclick="go('pending')">Review Pending (${pending})</button>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card amber"><div class="label">Pending Approvals</div><div class="val">${pending}</div><div class="delta">Requires your action</div></div>
+      <div class="stat-card blue"><div class="label">Awaiting Dispatch</div><div class="val">${approved}</div><div class="delta">Approved — with warehouse</div></div>
+      <div class="stat-card green"><div class="label">Tickets This Month</div><div class="val">${thisMonth}</div><div class="delta">April 2026</div></div>
+      <div class="stat-card"><div class="label">Rejected This Month</div><div class="val">${rejected}</div><div class="delta">Warranty / invalid claims</div></div>
+    </div>
+
+    <div class="card">
+      <h3>Replacement Trend &mdash; Last 6 Months</h3>
+      <div class="bar-chart" style="padding-top:30px;padding-bottom:30px">
+        <div class="bar" style="height:40%"><span class="v">8</span><span class="lbl">Nov</span></div>
+        <div class="bar" style="height:55%"><span class="v">11</span><span class="lbl">Dec</span></div>
+        <div class="bar" style="height:70%"><span class="v">14</span><span class="lbl">Jan</span></div>
+        <div class="bar" style="height:45%"><span class="v">9</span><span class="lbl">Feb</span></div>
+        <div class="bar" style="height:65%"><span class="v">13</span><span class="lbl">Mar</span></div>
+        <div class="bar" style="height:80%;background:linear-gradient(180deg,var(--bpcl-yellow),var(--bpcl-yellow-2))"><span class="v">${thisMonth}</span><span class="lbl">Apr</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Recent Tickets</h3>
+      ${renderTicketTable(recent,true)}
+    </div>
+  `;
+}
+
+/* ---------- OFFICER: PENDING APPROVALS ---------- */
+function renderPendingApprovals(){
+  const list = tickets.filter(t=>t.status==="Pending");
+  document.getElementById("main").innerHTML = `
+    <div class="page-header">
+      <div><h1>Pending Approvals</h1><div class="sub">${list.length} ticket(s) awaiting your review</div></div>
+    </div>
+    <div class="alert">These tickets were raised by field engineers and need your approval before stores can dispatch replacements.</div>
+    <div class="card">
+      ${list.length ? renderTicketTable(list,true) : "<div class='empty'>🎉 No pending approvals.</div>"}
+    </div>
+  `;
+}
+
+/* ---------- OFFICER / ALL: ALL TICKETS ---------- */
+function renderAllTickets(){
+  document.getElementById("main").innerHTML = `
+    <div class="page-header">
+      <div><h1>All Tickets</h1><div class="sub">Complete record of all replacement requests</div></div>
+    </div>
+    <div class="filter-bar">
+      <input type="text" id="searchBox" placeholder="Search ticket ID, outlet code, item…" oninput="filterTickets()" />
+      <select id="statusFilter" onchange="filterTickets()">
+        <option value="">All statuses</option>
+        <option>Pending</option><option>Approved</option><option>Dispatched</option>
+        <option>Completed</option><option>Rejected</option>
+      </select>
+      <select id="itemFilter" onchange="filterTickets()">
+        <option value="">All items</option><option>Hose</option><option>Nozzle</option>
+      </select>
+    </div>
+    <div class="card" id="ticketTableWrap">
+      ${renderTicketTable(tickets,true)}
+    </div>
+  `;
+}
+
+function filterTickets(){
+  const q = document.getElementById("searchBox").value.toLowerCase();
+  const s = document.getElementById("statusFilter").value;
+  const i = document.getElementById("itemFilter").value;
+  const filtered = tickets.filter(t=>{
+    const hay = (t.id+" "+t.outletCode+" "+t.item+" "+t.model).toLowerCase();
+    return (!q || hay.includes(q)) && (!s || t.status===s) && (!i || t.item===i);
+  });
+  document.getElementById("ticketTableWrap").innerHTML = renderTicketTable(filtered,true);
+}
+
+/* ---------- TICKET TABLE HELPER ---------- */
+function renderTicketTable(list,showActions){
+  if(!list.length) return "<div class='empty'>No tickets found</div>";
+  return `
+    <table>
+      <thead>
+        <tr>
+          <th>Ticket ID</th><th>Outlet</th><th>Item</th><th>Qty</th>
+          <th>Raised By</th><th>Raised On</th><th>Status</th>${showActions?"<th>Action</th>":""}
+        </tr>
+      </thead>
+      <tbody>
+        ${list.map(t=>{
+          const outlet = outlets.find(o=>o.code===t.outletCode)||{};
+          const sClass = "s-"+t.status.toLowerCase();
+          return `<tr>
+            <td><strong>${t.id}</strong></td>
+            <td>${t.outletCode}<br/><small style="color:var(--muted)">${outlet.name||""}</small></td>
+            <td>${t.item}${t.model?' &mdash; '+t.model:''}</td>
+            <td>${t.qty}</td>
+            <td>${t.raisedBy}</td>
+            <td>${fmtDate(t.raisedOn)}</td>
+            <td><span class="status ${sClass}">${t.status}</span></td>
+            ${showActions?`<td><button class="btn btn-sm btn-secondary" onclick="viewTicket('${t.id}')">View</button></td>`:""}
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>`;
+}
+
+/* ---------- OUTLET HISTORY REPORT ---------- */
+function renderOutletHistory(){
+  document.getElementById("main").innerHTML = `
+    <div class="page-header">
+      <div><h1>Outlet Replacement History</h1><div class="sub">Complete replacement record per retail outlet</div></div>
+    </div>
+    <div class="card">
+      <label>Select Retail Outlet (Customer Code)</label>
+      <select id="outletPick" onchange="showOutletHistory(this.value)" style="max-width:420px">
+        <option value="">-- Choose an outlet --</option>
+        ${outlets.map(o=>`<option value="${o.code}">${o.code} &mdash; ${o.name} (${o.city})</option>`).join("")}
+      </select>
+    </div>
+    <div id="outletHistoryBody"></div>
+  `;
+}
+
+function showOutletHistory(code){
+  const body = document.getElementById("outletHistoryBody");
+  if(!code){body.innerHTML="";return}
+  const outlet = outlets.find(o=>o.code===code);
+  const history = tickets.filter(t=>t.outletCode===code);
+  const hoses = history.filter(t=>t.item==="Hose").length;
+  const nozzles = history.filter(t=>t.item==="Nozzle").length;
+  body.innerHTML = `
+    <div class="card">
+      <h3>${outlet.name} &mdash; ${outlet.code}</h3>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="k">Location</div><div class="v">${outlet.city}</div></div>
+        <div class="detail-item"><div class="k">Dealer</div><div class="v">${outlet.dealer}</div></div>
+        <div class="detail-item"><div class="k">Total Replacements</div><div class="v">${history.length}</div></div>
+        <div class="detail-item"><div class="k">Hoses / Nozzles</div><div class="v">${hoses} hoses &middot; ${nozzles} nozzles</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Replacement History</h3>
+      ${renderTicketTable(history,true)}
+    </div>
+  `;
+}
+
+/* ---------- FREQUENCY ANALYSIS ---------- */
+function renderFrequency(){
+  const counts = {};
+  tickets.forEach(t=>{counts[t.outletCode]=(counts[t.outletCode]||0)+1});
+  const rows = Object.keys(counts).map(code=>{
+    const o = outlets.find(x=>x.code===code)||{};
+    return {code,name:o.name||"",city:o.city||"",count:counts[code]};
+  }).sort((a,b)=>b.count-a.count);
+
+  document.getElementById("main").innerHTML = `
+    <div class="page-header">
+      <div><h1>Frequency Analysis</h1><div class="sub">Outlets sorted by replacement frequency &mdash; flag anomalies</div></div>
+    </div>
+    <div class="alert">⚠ Outlets with &ge; 3 replacements in the period may indicate misuse, theft, or a quality issue worth investigating.</div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Rank</th><th>Outlet Code</th><th>Outlet Name</th><th>Location</th><th>Replacements</th><th>Flag</th></tr></thead>
+        <tbody>
+          ${rows.map((r,i)=>`
+            <tr>
+              <td>#${i+1}</td><td><strong>${r.code}</strong></td><td>${r.name}</td><td>${r.city}</td>
+              <td><strong style="font-size:16px;color:var(--bpcl-red)">${r.count}</strong></td>
+              <td>${r.count>=3?"<span class='status s-rejected'>High</span>":r.count===2?"<span class='status s-pending'>Moderate</span>":"<span class='status s-approved'>Normal</span>"}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* ---------- MONTHLY CONSUMPTION REPORT ---------- */
+function renderMonthly(){
+  const months = ["2026-03","2026-04"];
+  const data = months.map(m=>{
+    const list = tickets.filter(t=>t.raisedOn.startsWith(m));
+    return {
+      month:m,
+      total:list.length,
+      hoses:list.filter(t=>t.item==="Hose").reduce((s,t)=>s+t.qty,0),
+      nozzles:list.filter(t=>t.item==="Nozzle").reduce((s,t)=>s+t.qty,0),
+      approved:list.filter(t=>["Approved","Dispatched","Completed"].includes(t.status)).length,
+      rejected:list.filter(t=>t.status==="Rejected").length
+    };
+  });
+
+  document.getElementById("main").innerHTML = `
+    <div class="page-header">
+      <div><h1>Monthly Consumption Report</h1><div class="sub">Quantities issued per month &mdash; Gujarat Territory</div></div>
+      <button class="btn btn-secondary" onclick="alert('Export to Excel coming in production build')">⬇ Export to Excel</button>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Month</th><th>Total Tickets</th><th>Hoses Issued</th><th>Nozzles Issued</th><th>Approved</th><th>Rejected</th></tr></thead>
+        <tbody>
+          ${data.map(d=>`
+            <tr>
+              <td><strong>${fmtMonth(d.month)}</strong></td>
+              <td>${d.total}</td><td>${d.hoses}</td><td>${d.nozzles}</td>
+              <td>${d.approved}</td><td>${d.rejected}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* ---------- OUTLET MASTER ---------- */
+function renderOutlets(){
+  document.getElementById("main").innerHTML = `
+    <div class="page-header">
+      <div><h1>Retail Outlet Master</h1><div class="sub">${outlets.length} outlets in your territory</div></div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-secondary" onclick="exportOutletsCsv()">⬇ Export CSV</button>
+        <button class="btn btn-primary" onclick="go('importoutlets')">⬆ Import Outlets</button>
+      </div>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Customer Code</th><th>Outlet Name</th><th>Location</th><th>Dealer</th><th>Contact</th></tr></thead>
+        <tbody>${outlets.map(o=>`<tr><td><strong>${o.code}</strong></td><td>${o.name}</td><td>${o.city}</td><td>${o.dealer}</td><td>${o.phone}</td></tr>`).join("")}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* ---------- IMPORT OUTLETS PAGE ---------- */
+function renderImportOutlets(){
+  document.getElementById("main").innerHTML = `
+    <div class="page-header">
+      <div><h1>Import Retail Outlets</h1><div class="sub">Bulk import outlets from CSV or Excel export &mdash; typically from SAP / Dealer Management System</div></div>
+      <button class="btn btn-secondary" onclick="go('outlets')">← Back to Outlets</button>
+    </div>
+
+    <div class="card">
+      <div class="import-tabs">
+        <div class="import-tab active" onclick="switchImportTab('file')" id="tab-file">📁 Upload CSV File</div>
+        <div class="import-tab" onclick="switchImportTab('paste')" id="tab-paste">📋 Paste CSV Data</div>
+        <div class="import-tab" onclick="switchImportTab('template')" id="tab-template">📄 Download Template</div>
+      </div>
+
+      <!-- FILE UPLOAD -->
+      <div class="import-panel active" id="panel-file">
+        <div class="alert info">
+          <strong>Accepted format:</strong> CSV file with columns &mdash;
+          <code>Customer Code, Outlet Name, City, Dealer Name, Phone</code>.
+          Download the template (tab 3) if you're not sure.
+        </div>
+        <div class="photo-drop" onclick="document.getElementById('csvFileInp').click()" style="padding:40px">
+          📁 Click here to select your CSV file<br/>
+          <small style="color:var(--muted);font-weight:normal">or drag &amp; drop</small>
+        </div>
+        <input type="file" id="csvFileInp" accept=".csv,.txt" style="display:none" onchange="handleCsvFile(this.files[0])" />
+        <div id="fileImportStatus" style="margin-top:14px"></div>
+      </div>
+
+      <!-- PASTE CSV -->
+      <div class="import-panel" id="panel-paste">
+        <div class="alert info">
+          Paste CSV data below. First row must be the header row.
+        </div>
+        <label>CSV Data <span style="color:var(--red)">*</span></label>
+        <textarea id="csvPasteBox" class="csv-box" placeholder="Customer Code,Outlet Name,City,Dealer Name,Phone
+RO12001,Sample Fuels,Anand GJ,Mr. Ramesh Patel,9824000000
+RO12002,Highway Petro,Surat GJ,Mrs. Kavita Shah,9825111111"></textarea>
+        <button class="btn btn-primary" onclick="parseCsvPaste()" style="margin-top:12px">🔍 Preview &amp; Validate</button>
+      </div>
+
+      <!-- TEMPLATE -->
+      <div class="import-panel" id="panel-template">
+        <div class="alert info">
+          Download this CSV template, fill in your retail outlet list, then upload it using the first tab.
+        </div>
+        <div style="background:#f0f4fa;padding:14px;border-radius:6px;font-family:monospace;font-size:12px;white-space:pre;overflow-x:auto">Customer Code,Outlet Name,City,Dealer Name,Phone
+RO10001,Example Fuels,City Name GJ,Mr. Dealer Name,9824000000
+RO10002,Another Station,City Name GJ,Mrs. Another Dealer,9825000000</div>
+        <button class="btn btn-primary" onclick="downloadTemplate()" style="margin-top:14px">⬇ Download Template CSV</button>
+
+        <div style="margin-top:22px">
+          <h4 style="color:var(--bpcl-blue);margin:0 0 8px 0">Column Guide</h4>
+          <table>
+            <thead><tr><th>Column</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Customer Code</strong></td><td>Yes</td><td>BPCL-issued unique ID for the retail outlet (e.g. RO10234). Used as primary key.</td></tr>
+              <tr><td><strong>Outlet Name</strong></td><td>Yes</td><td>Dealer / outlet name as on BPCL records.</td></tr>
+              <tr><td><strong>City</strong></td><td>Yes</td><td>City and state (e.g. "Vadodara, GJ").</td></tr>
+              <tr><td><strong>Dealer Name</strong></td><td>No</td><td>Name of the dealer/proprietor with salutation.</td></tr>
+              <tr><td><strong>Phone</strong></td><td>No</td><td>10-digit mobile number of dealer.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="importPreview"></div>
+  `;
+}
+
+function switchImportTab(t){
+  ["file","paste","template"].forEach(x=>{
+    document.getElementById("tab-"+x).classList.toggle("active",x===t);
+    document.getElementById("panel-"+x).classList.toggle("active",x===t);
+  });
+}
+
+function handleCsvFile(file){
+  if(!file) return;
+  document.getElementById("fileImportStatus").innerHTML =
+    `<div style="color:var(--bpcl-blue);font-size:13px">📄 Reading <strong>${file.name}</strong> (${(file.size/1024).toFixed(1)} KB)...</div>`;
+  const reader = new FileReader();
+  reader.onload = e => parseCsvText(e.target.result, file.name);
+  reader.onerror = () => {
+    document.getElementById("fileImportStatus").innerHTML =
+      `<div style="color:var(--red)">❌ Failed to read file.</div>`;
+  };
+  reader.readAsText(file);
+}
+
+function parseCsvPaste(){
+  const txt = document.getElementById("csvPasteBox").value.trim();
+  if(!txt){alert("Please paste CSV data first.");return}
+  parseCsvText(txt, "pasted data");
+}
+
+function parseCsvText(text, source){
+  // Simple CSV parser — handles quoted values and commas inside quotes
+  const lines = text.split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2){showImportError("CSV must contain a header row and at least one data row.");return}
+
+  const parseRow = (line)=>{
+    const out=[];let cur="";let inQ=false;
+    for(let i=0;i<line.length;i++){
+      const c=line[i];
+      if(c==='"'){
+        if(inQ && line[i+1]==='"'){cur+='"';i++}
+        else inQ=!inQ;
+      } else if(c===',' && !inQ){out.push(cur.trim());cur=""}
+      else cur+=c;
+    }
+    out.push(cur.trim());
+    return out;
+  };
+
+  const header = parseRow(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z]/g,""));
+  const map = {
+    code:   header.findIndex(h=>h.includes("code")||h.includes("customer")),
+    name:   header.findIndex(h=>h.includes("outlet")||h.includes("name")),
+    city:   header.findIndex(h=>h.includes("city")||h.includes("location")),
+    dealer: header.findIndex(h=>h.includes("dealer")),
+    phone:  header.findIndex(h=>h.includes("phone")||h.includes("mobile")||h.includes("contact"))
+  };
+
+  if(map.code<0 || map.name<0 || map.city<0){
+    showImportError("Missing required columns. Must contain: Customer Code, Outlet Name, City.");
+    return;
+  }
+
+  const rows = [];const errors = [];const duplicates = [];
+  const existingCodes = new Set(outlets.map(o=>o.code));
+  const seenInFile = new Set();
+
+  for(let i=1;i<lines.length;i++){
+    const cols = parseRow(lines[i]);
+    const code = (cols[map.code]||"").trim();
+    const name = (cols[map.name]||"").trim();
+    const city = (cols[map.city]||"").trim();
+    if(!code && !name){continue}
+    if(!code){errors.push({row:i+1,msg:"Missing Customer Code",data:cols.join(", ")});continue}
+    if(!name){errors.push({row:i+1,msg:"Missing Outlet Name",data:cols.join(", ")});continue}
+    if(!city){errors.push({row:i+1,msg:"Missing City",data:cols.join(", ")});continue}
+    if(seenInFile.has(code)){duplicates.push({row:i+1,code,msg:"Duplicate in CSV"});continue}
+    seenInFile.add(code);
+    const isUpdate = existingCodes.has(code);
+    rows.push({
+      code, name, city,
+      dealer: map.dealer>=0 ? (cols[map.dealer]||"").trim() : "",
+      phone:  map.phone>=0  ? (cols[map.phone]||"").trim()  : "",
+      _update: isUpdate
+    });
+  }
+
+  renderImportPreview(rows, errors, duplicates, source);
+}
+
+function renderImportPreview(rows, errors, dupes, source){
+  const newRows = rows.filter(r=>!r._update);
+  const updateRows = rows.filter(r=>r._update);
+  const hasIssues = errors.length + dupes.length > 0;
+
+  document.getElementById("importPreview").innerHTML = `
+    <div class="card">
+      <h3>Import Preview &mdash; ${source}</h3>
+      <div class="preview-stats">
+        <div class="preview-stat">✓ ${newRows.length} new outlets</div>
+        <div class="preview-stat">↻ ${updateRows.length} updates (existing codes)</div>
+        ${dupes.length?`<div class="preview-stat warn">⚠ ${dupes.length} duplicates in file</div>`:""}
+        ${errors.length?`<div class="preview-stat err">❌ ${errors.length} errors</div>`:""}
+      </div>
+
+      ${errors.length?`
+        <div class="alert">
+          <strong>${errors.length} row(s) with errors &mdash; these will be skipped:</strong>
+          <ul style="margin:6px 0 0 18px;padding:0">
+            ${errors.slice(0,5).map(e=>`<li>Row ${e.row}: ${e.msg} &mdash; <code style="font-size:11px">${e.data.substring(0,80)}</code></li>`).join("")}
+            ${errors.length>5?`<li>...and ${errors.length-5} more</li>`:""}
+          </ul>
+        </div>
+      `:""}
+
+      ${rows.length?`
+        <table>
+          <thead><tr><th>Action</th><th>Customer Code</th><th>Outlet Name</th><th>City</th><th>Dealer</th><th>Phone</th></tr></thead>
+          <tbody>
+            ${rows.slice(0,50).map(r=>`
+              <tr>
+                <td>${r._update?'<span class="status s-pending">UPDATE</span>':'<span class="status s-approved">NEW</span>'}</td>
+                <td><strong>${r.code}</strong></td><td>${r.name}</td><td>${r.city}</td>
+                <td>${r.dealer||"-"}</td><td>${r.phone||"-"}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+        ${rows.length>50?`<div class="helper" style="margin-top:8px">Showing first 50 of ${rows.length} rows</div>`:""}
+
+        <div style="display:flex;gap:10px;margin-top:18px">
+          <button class="btn btn-primary" onclick='confirmImport(${JSON.stringify(rows).replace(/'/g,"&#39;")})'>
+            ✓ Confirm Import (${rows.length} outlets)
+          </button>
+          <button class="btn btn-secondary" onclick="document.getElementById('importPreview').innerHTML=''">Cancel</button>
+        </div>
+      `:`<div class="empty">No valid rows to import.</div>`}
+    </div>
+  `;
+}
+
+function confirmImport(rows){
+  let added = 0, updated = 0;
+  rows.forEach(r=>{
+    const idx = outlets.findIndex(o=>o.code===r.code);
+    const rec = {code:r.code, name:r.name, city:r.city, dealer:r.dealer||"-", phone:r.phone||"-"};
+    if(idx>=0){outlets[idx] = rec; updated++}
+    else{outlets.push(rec); added++}
+  });
+  alert(`✓ Import successful!\n\n${added} new outlets added\n${updated} existing outlets updated\n\nTotal outlets in master: ${outlets.length}`);
+  go("outlets");
+}
+
+function showImportError(msg){
+  document.getElementById("importPreview").innerHTML = `
+    <div class="card">
+      <div class="alert" style="border-left-color:var(--red);background:#fee2e2;color:#991b1b">
+        <strong>Import Error:</strong> ${msg}
+      </div>
+    </div>`;
+}
+
+function downloadTemplate(){
+  const csv = "Customer Code,Outlet Name,City,Dealer Name,Phone\nRO10001,Example Fuels,City Name GJ,Mr. Dealer Name,9824000000\nRO10002,Another Station,City Name GJ,Mrs. Another Dealer,9825000000";
+  triggerDownload(csv, "BPCL_Outlet_Import_Template.csv");
+}
+
+function exportOutletsCsv(){
+  const header = "Customer Code,Outlet Name,City,Dealer Name,Phone";
+  const rows = outlets.map(o=>`${o.code},"${o.name}","${o.city}","${o.dealer}",${o.phone}`);
+  triggerDownload([header,...rows].join("\n"), "BPCL_Outlets_Export.csv");
+}
+
+function triggerDownload(text, filename){
+  const blob = new Blob([text], {type:"text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ---------- ENGINEER: RAISE TICKET ---------- */
+function renderRaiseTicket(){
+  const fe = currentUser ? currentUser.name : "MST";
+  document.getElementById("main").innerHTML = `
+    <div class="page-header">
+      <div><h1>Raise New Replacement Ticket</h1><div class="sub">MST (Multi Skill Technician) &mdash; ${fe} &bull; ${currentUser?.territory||""}</div></div>
+    </div>
+    <div class="card">
+      <form id="ticketForm" onsubmit="submitTicket(event)">
+        <div class="section-title">Outlet Details</div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Customer Code <span class="req">*</span></label>
+            <select required id="f_outlet" onchange="fillOutlet(this.value)">
+              <option value="">-- Select outlet --</option>
+              ${outlets.map(o=>`<option value="${o.code}">${o.code} &mdash; ${o.name}</option>`).join("")}
+            </select>
+            <div class="helper">Unique identifier for the BPCL retail outlet</div>
+          </div>
+          <div class="form-row">
+            <label>Outlet Name</label>
+            <input type="text" id="f_oname" readonly placeholder="Auto-filled" />
+          </div>
+          <div class="form-row">
+            <label>Location</label>
+            <input type="text" id="f_loc" readonly />
+          </div>
+          <div class="form-row">
+            <label>Dealer Contact</label>
+            <input type="text" id="f_dealer" readonly />
+          </div>
+        </div>
+
+        <div class="section-title">Item Details</div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Item Type <span class="req">*</span></label>
+            <select required id="f_item">
+              <option value="">-- Select --</option>
+              <option>Hose</option><option>Nozzle</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Model</label>
+            <input type="text" id="f_model" placeholder="e.g. H7434" />
+          </div>
+          <div class="form-row">
+            <label>Part / Serial No.</label>
+            <input type="text" id="f_part" placeholder="e.g. G-3/4-19mm" />
+          </div>
+          <div class="form-row">
+            <label>Quantity <span class="req">*</span></label>
+            <input type="number" id="f_qty" min="1" value="1" required />
+          </div>
+          <div class="form-row">
+            <label>Observed On <span class="req">*</span></label>
+            <input type="date" id="f_date" value="2026-04-23" required />
+          </div>
+        </div>
+
+        <div class="section-title">Damage Details</div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Reason for Replacement <span class="req">*</span></label>
+            <select required id="f_reason">
+              <option value="">-- Select --</option>
+              <option>Crack at nozzle end</option>
+              <option>Burst during operation</option>
+              <option>Abrasion damage</option>
+              <option>Automatic shut-off failure</option>
+              <option>Swivel damaged</option>
+              <option>Leakage at trigger</option>
+              <option>End of service life</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Severity</label>
+            <select id="f_sev">
+              <option>Minor</option><option>Moderate</option><option>Critical &mdash; unit offline</option>
+            </select>
+          </div>
+          <div class="form-row full">
+            <label>Description</label>
+            <textarea id="f_desc" placeholder="Detailed damage description, circumstances, dealer observation…"></textarea>
+          </div>
+          <div class="form-row full">
+            <label>Photos of Damaged Item <span style="color:var(--muted);font-weight:normal">(optional)</span></label>
+            <div class="photo-drop" onclick="document.getElementById('fileInp').click()">
+              📷 Click to upload photos (max 5) &mdash; clear photos of damage help approval
+            </div>
+            <input type="file" id="fileInp" multiple accept="image/*" style="display:none" onchange="handleFiles(this.files)" />
+            <div class="photo-preview" id="photoPreview"></div>
+            <div class="helper">Photos are recommended but not mandatory. GPS location of outlet auto-captured in production app.</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:18px">
+          <button type="submit" class="btn btn-primary">Submit Ticket for Approval</button>
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('ticketForm').reset();document.getElementById('photoPreview').innerHTML='';currentPhotoCount=0">Clear</button>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
+function fillOutlet(code){
+  const o = outlets.find(x=>x.code===code);
+  if(!o) return;
+  document.getElementById("f_oname").value = o.name;
+  document.getElementById("f_loc").value = o.city;
+  document.getElementById("f_dealer").value = o.dealer+" &mdash; "+o.phone;
+}
+
+function handleFiles(files){
+  const prev = document.getElementById("photoPreview");
+  [...files].slice(0,5-currentPhotoCount).forEach(f=>{
+    const reader = new FileReader();
+    reader.onload = e=>{
+      const div = document.createElement("div");
+      div.className = "photo-thumb";
+      div.innerHTML = `<img src="${e.target.result}"/><button type="button" class="rm" onclick="this.parentElement.remove();currentPhotoCount--">×</button>`;
+      prev.appendChild(div);
+      currentPhotoCount++;
+    };
+    reader.readAsDataURL(f);
+  });
+}
+
+function submitTicket(e){
+  e.preventDefault();
+  const outletCode = document.getElementById("f_outlet").value;
+  const item = document.getElementById("f_item").value;
+  const model = document.getElementById("f_model").value;
+  const partNo = document.getElementById("f_part").value;
+  const qty = parseInt(document.getElementById("f_qty").value);
+  const reason = document.getElementById("f_reason").value;
+  const desc = document.getElementById("f_desc").value;
+  const photos = document.querySelectorAll("#photoPreview .photo-thumb").length;
+
+  const newId = "TKT-2026-"+String(142+tickets.length+1).padStart(4,"0");
+  const now = new Date();
+  const dStr = now.toISOString().split("T")[0];
+  const tStr = now.toLocaleString("en-IN",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+
+  const feName = (currentUser?.name || "MST") + " (MST)";
+  tickets.unshift({
+    id:newId,outletCode,item,make:"",model,partNo,qty,reason,description:desc,
+    status:"Pending",raisedBy:feName,raisedOn:dStr,
+    approvedBy:null,approvedOn:null,dispatchedOn:null,photos,
+    timeline:[{t:"Ticket raised by "+(currentUser?.name||"MST"),d:tStr}]
+  });
+  alert(`✓ Ticket ${newId} submitted successfully!\n\nStatus: Pending Approval\nEngineering Officer will review shortly.`);
+  go("mytickets");
+}
+
+/* ---------- ENGINEER: MY TICKETS ---------- */
+function renderMyTickets(){
+  const fname = currentUser?.name?.split(" ")[0] || "";
+  const mine = tickets.filter(t=>t.raisedBy.startsWith(fname));
+  document.getElementById("main").innerHTML = `
+    <div class="page-header">
+      <div><h1>My Tickets</h1><div class="sub">All tickets raised by you &mdash; ${currentUser?.name||"MST"}</div></div>
+      <button class="btn btn-primary" onclick="go('raise')">＋ Raise New Ticket</button>
+    </div>
+    <div class="card">${mine.length?renderTicketTable(mine,true):"<div class='empty'>You haven't raised any tickets yet. Click 'Raise New Ticket' to start.</div>"}</div>
+  `;
+}
+
+/* ---------- WAREHOUSE: DISPATCH QUEUE ---------- */
+function renderDispatchQueue(){
+  const list = tickets.filter(t=>t.status==="Approved");
+  document.getElementById("main").innerHTML = `
+    <div class="page-header">
+      <div><h1>Dispatch Queue</h1><div class="sub">${list.length} approved ticket(s) ready to dispatch from ${currentUser?.territory||"Stores"}</div></div>
+    </div>
+    <div class="alert info">These tickets have been approved by the Engineering Officer. Pick the item from stores, enter dispatch note, and mark as dispatched.</div>
+    <div class="card">
+      ${list.length?renderTicketTable(list,true):"<div class='empty'>📦 No pending dispatches.</div>"}
+    </div>
+  `;
+}
+
+/* ---------- WAREHOUSE: DISPATCHED ---------- */
+function renderDispatched(){
+  const list = tickets.filter(t=>t.status==="Dispatched" || t.status==="Completed");
+  document.getElementById("main").innerHTML = `
+    <div class="page-header">
+      <div><h1>Dispatched Items</h1><div class="sub">Past dispatches from this warehouse</div></div>
+    </div>
+    <div class="card">${renderTicketTable(list,true)}</div>
+  `;
+}
+
+/* =====================================================
+   TICKET DETAIL MODAL
+   ===================================================== */
+function viewTicket(id){
+  const t = tickets.find(x=>x.id===id);
+  if(!t) return;
+  selectedTicketId = id;
+  const outlet = outlets.find(o=>o.code===t.outletCode)||{};
+  const sClass = "s-"+t.status.toLowerCase();
+
+  document.getElementById("modalTitle").textContent = t.id;
+  document.getElementById("modalBody").innerHTML = `
+    <div style="margin-bottom:14px">
+      <span class="status ${sClass}">${t.status}</span>
+      <span style="margin-left:8px;color:var(--muted);font-size:12px">Raised on ${fmtDate(t.raisedOn)}</span>
+    </div>
+
+    <div class="section-title">Outlet</div>
+    <div class="detail-grid">
+      <div class="detail-item"><div class="k">Customer Code</div><div class="v">${t.outletCode}</div></div>
+      <div class="detail-item"><div class="k">Outlet Name</div><div class="v">${outlet.name||"-"}</div></div>
+      <div class="detail-item"><div class="k">Location</div><div class="v">${outlet.city||"-"}</div></div>
+      <div class="detail-item"><div class="k">Dealer</div><div class="v">${outlet.dealer||"-"}</div></div>
+    </div>
+
+    <div class="section-title">Item</div>
+    <div class="detail-grid">
+      <div class="detail-item"><div class="k">Type</div><div class="v">${t.item}</div></div>
+      <div class="detail-item"><div class="k">Model</div><div class="v">${t.model||"-"}</div></div>
+      <div class="detail-item"><div class="k">Part No.</div><div class="v">${t.partNo}</div></div>
+      <div class="detail-item"><div class="k">Quantity</div><div class="v">${t.qty}</div></div>
+    </div>
+
+    <div class="section-title">Damage</div>
+    <div class="detail-grid full">
+      <div class="detail-item"><div class="k">Reason</div><div class="v">${t.reason}</div></div>
+      <div class="detail-item"><div class="k">Description</div><div class="v">${t.description||"-"}</div></div>
+      <div class="detail-item"><div class="k">Photos</div><div class="v">${t.photos} photo(s) attached
+        <div class="photo-preview" style="margin-top:6px">
+          ${Array(t.photos).fill(0).map(()=>`<div class="photo-thumb">📷 Photo</div>`).join("")}
+        </div>
+      </div></div>
+    </div>
+
+    <div class="section-title">Timeline</div>
+    <ul class="timeline">
+      ${t.timeline.map(e=>`<li><div>${e.t}</div><div class="when">${e.d}</div></li>`).join("")}
+    </ul>
+  `;
+
+  // Build action buttons based on role + status
+  const foot = document.getElementById("modalFoot");
+  let actions = `<button class="btn btn-secondary" onclick="closeModal()">Close</button>`;
+  if(currentRole==="officer" && t.status==="Pending"){
+    actions = `
+      <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+      <button class="btn btn-danger" onclick="rejectTicket('${t.id}')">✗ Reject</button>
+      <button class="btn btn-success" onclick="approveTicket('${t.id}')">✓ Approve</button>
+    `;
+  } else if(currentRole==="warehouse" && t.status==="Approved"){
+    actions = `
+      <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+      <button class="btn btn-primary" onclick="dispatchTicket('${t.id}')">📦 Mark as Dispatched</button>
+    `;
+  } else if(currentRole==="engineer" && t.status==="Dispatched"){
+    actions = `
+      <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+      <button class="btn btn-success" onclick="completeTicket('${t.id}')">✓ Confirm Installation</button>
+    `;
+  }
+  foot.innerHTML = actions;
+  document.getElementById("modalBg").classList.add("show");
+}
+
+function closeModal(){document.getElementById("modalBg").classList.remove("show")}
+
+function approveTicket(id){
+  const t = tickets.find(x=>x.id===id);
+  const note = prompt("Approval note (optional):","Genuine damage confirmed. Approved for dispatch.");
+  if(note===null) return;
+  const eoName = (currentUser?.name || "Engineering Officer");
+  t.status = "Approved";
+  t.approvedBy = eoName+" (EO)";
+  t.approvedOn = "2026-04-23";
+  t.timeline.push({t:"Approved by "+eoName+(note?" — "+note:""),d:"23-Apr-2026 "+new Date().toTimeString().slice(0,5)});
+  closeModal();
+  alert(`✓ Ticket ${id} approved.\n\nWarehouse has been notified for dispatch.`);
+  renderMain();
+}
+
+function rejectTicket(id){
+  const t = tickets.find(x=>x.id===id);
+  const reason = prompt("Reason for rejection:","");
+  if(!reason) return;
+  const eoName = (currentUser?.name || "Engineering Officer");
+  t.status = "Rejected";
+  t.approvedBy = eoName+" (EO)";
+  t.approvedOn = "2026-04-23";
+  t.timeline.push({t:"Rejected by "+eoName+" — "+reason,d:"23-Apr-2026 "+new Date().toTimeString().slice(0,5)});
+  closeModal();
+  alert(`✗ Ticket ${id} rejected.`);
+  renderMain();
+}
+
+function dispatchTicket(id){
+  const t = tickets.find(x=>x.id===id);
+  const note = prompt("Dispatch reference (e.g. DC No.):","DC/VAD/2026/089");
+  if(!note) return;
+  t.status = "Dispatched";
+  t.dispatchedOn = "2026-04-23";
+  t.timeline.push({t:"Dispatched from "+(currentUser?.territory||"Stores")+" — "+note,d:"23-Apr-2026"});
+  closeModal();
+  alert(`📦 Ticket ${id} marked as dispatched.\n\nField engineer will confirm installation upon receipt.`);
+  renderMain();
+}
+
+function completeTicket(id){
+  const t = tickets.find(x=>x.id===id);
+  t.status = "Completed";
+  t.timeline.push({t:"Installation confirmed at outlet",d:"23-Apr-2026"});
+  closeModal();
+  alert(`✓ Ticket ${id} marked as completed.`);
+  renderMain();
+}
+
+/* =====================================================
+   UTIL
+   ===================================================== */
+function fmtDate(d){
+  if(!d) return "-";
+  const [y,m,day] = d.split("-");
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return `${day}-${months[parseInt(m)-1]}-${y}`;
+}
+function fmtMonth(m){
+  const [y,mo]=m.split("-");
+  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  return `${months[parseInt(mo)-1]} ${y}`;
+}
+
+/* =====================================================
+   CLOUD MODE — overrides for cloud-connected operation
+   When apiUrl is configured, mutations go to Google Sheets
+   instead of localStorage. Falls back to local if not set.
+   ===================================================== */
+
+async function testCloudConnection(){
+  const url = document.getElementById('apiUrlInp').value.trim();
+  const out = document.getElementById('cloudTestResult');
+  if(!url){ out.innerHTML='<span style="color:var(--red)">Please enter a URL first.</span>'; return; }
+  out.innerHTML='<span style="color:var(--muted)">Testing connection…</span>';
+  const prevUrl = apiUrl;
+  apiUrl = url;
+  try{
+    const r = await apiCall('ping');
+    out.innerHTML=`<span style="color:var(--green)">✓ Connected! Server v${r.version} responded at ${new Date(r.time).toLocaleString()}</span>`;
+  }catch(e){
+    apiUrl = prevUrl;
+    out.innerHTML=`<span style="color:var(--red)">✗ ${e.message}</span>`;
+  }
+}
+
+async function connectCloud(){
+  const url = document.getElementById('apiUrlInp').value.trim();
+  if(!url){toast("URL required","Please paste the Apps Script Web App URL","error");return}
+  // Test first
+  apiUrl = url;
+  try{
+    await apiCall('ping');
+  }catch(e){
+    apiUrl = '';
+    toast("Connection failed", e.message, "error");
+    return;
+  }
+  setApiUrl(url);
+  setApiToken('');         // force re-login against cloud
+  toast("Cloud connected","Please log in again to load your data","success");
+  setTimeout(()=>{
+    currentUser = null;
+    document.getElementById("loginPage").style.display = "flex";
+  }, 800);
+}
+
+async function disconnectCloud(){
+  if(!confirm("Disconnect from Google Sheets?\n\nApp will revert to local browser storage. Cloud data remains in your Sheet, untouched.")) return;
+  try{ if(apiToken) await apiCall('logout'); }catch(e){}
+  setApiUrl('');
+  setApiToken('');
+  toast("Disconnected","Now using local browser storage","warn");
+  renderMain();
+}
+
+async function manualSync(){
+  if(!cloudMode){toast("Not connected","Configure cloud sync in Settings first","warn");return}
+  setSyncStatus('busy');
+  try{
+    await loadAllFromCloud();
+    setSyncStatus('ok');
+    renderMain();
+    toast("Synced","Data refreshed from Google Sheets","success");
+  }catch(e){
+    setSyncStatus('err');
+    toast("Sync failed", e.message, "error");
+  }
+}
+
+/* ----- Override: LOGIN ----- */
+const _localLogin = attemptLogin;
+attemptLogin = async function(e){
+  e.preventDefault();
+  if(!cloudMode){ return _localLogin(e); }
+  const id = document.getElementById("loginId").value.trim().toLowerCase();
+  const pwd = document.getElementById("loginPwd").value;
+  const err = document.getElementById("loginErr");
+  err.classList.remove("show");
+  setSyncStatus('busy');
+  try{
+    const r = await apiCall('login', {id, pwd});
+    setApiToken(r.token);
+    const u = r.user;
+    currentUser = {id:u.id, ...u};
+    currentRole = u.role;
+    currentPage = defaultPage[u.role];
+    await loadAllFromCloud();
+    document.getElementById("loginPage").style.display = "none";
+    document.getElementById("userName").textContent = u.name;
+    document.getElementById("userRole").textContent = u.roleLabel+" • "+u.territory;
+    document.getElementById("userAvatar").textContent = u.name.split(" ").map(x=>x[0]).join("").substring(0,2);
+    document.getElementById("syncBtn").style.display = "inline-flex";
+    setSyncStatus('ok');
+    renderSidebar();
+    renderMain();
+    toast("Connected to Google Sheets",`Signed in as ${u.name}`,"success");
+  }catch(ex){
+    setSyncStatus('err');
+    err.textContent = ex.message || "Login failed";
+    err.classList.add("show");
+  }
+};
+
+/* ----- Override: LOGOUT ----- */
+const _localLogout = logout;
+logout = async function(){
+  if(!confirm("Are you sure you want to logout?")) return;
+  if(cloudMode && apiToken){
+    try{ await apiCall('logout'); }catch(e){}
+  }
+  setApiToken('');
+  currentUser = null;
+  document.getElementById("loginId").value = "";
+  document.getElementById("loginPwd").value = "";
+  document.getElementById("loginErr").classList.remove("show");
+  document.getElementById("loginPage").style.display = "flex";
+  document.getElementById("syncBtn").style.display = cloudMode ? "inline-flex" : "none";
+  window.scrollTo(0,0);
+};
+
+/* ----- Override: APPROVE / REJECT / DISPATCH / COMPLETE ----- */
+async function cloudTransition(action, ticketId, extra, optimistic){
+  setSyncStatus('busy');
+  try{
+    await apiCall(action, Object.assign({ticketId, actorName: currentUser?.name||''}, extra||{}));
+    await loadAllFromCloud();
+    setSyncStatus('ok');
+    renderMain();
+    return true;
+  }catch(e){
+    setSyncStatus('err');
+    toast("Action failed", e.message, "error");
+    return false;
+  }
+}
+
+const _localApprove = approveTicket;
+approveTicket = async function(id){
+  if(!cloudMode) return _localApprove(id);
+  const note = prompt("Approval note (optional):","Genuine damage confirmed. Approved for dispatch.");
+  if(note===null) return;
+  closeModal();
+  if(await cloudTransition('approveTicket', id, {note})) toast(`Ticket ${id} approved`,"Warehouse will be notified","success");
+};
+
+const _localReject = rejectTicket;
+rejectTicket = async function(id){
+  if(!cloudMode) return _localReject(id);
+  const reason = prompt("Reason for rejection:","");
+  if(!reason) return;
+  closeModal();
+  if(await cloudTransition('rejectTicket', id, {reason})) toast(`Ticket ${id} rejected`, reason, "warn");
+};
+
+const _localDispatch = dispatchTicket;
+dispatchTicket = async function(id){
+  if(!cloudMode) return _localDispatch(id);
+  const dcNo = prompt("Dispatch reference (DC No.):","DC/VAD/2026/090");
+  if(!dcNo) return;
+  closeModal();
+  if(await cloudTransition('dispatchTicket', id, {dcNo})) toast(`Ticket ${id} dispatched`, `DC ${dcNo}`, "success");
+};
+
+const _localComplete = completeTicket;
+completeTicket = async function(id){
+  if(!cloudMode) return _localComplete(id);
+  closeModal();
+  if(await cloudTransition('completeTicket', id, {})) toast(`Ticket ${id} completed`, "Installation confirmed", "success");
+};
+
+/* ----- Override: SUBMIT NEW TICKET ----- */
+const _localSubmitTicket = submitTicket;
+submitTicket = async function(e){
+  e.preventDefault();
+  if(!cloudMode){ return _localSubmitTicket(e); }
+
+  const outletCode = document.getElementById("f_outlet").value;
+  const item = document.getElementById("f_item").value;
+  const model = document.getElementById("f_model").value;
+  const partNo = document.getElementById("f_part").value;
+  const qty = parseInt(document.getElementById("f_qty").value);
+  const reason = document.getElementById("f_reason").value;
+  const desc = document.getElementById("f_desc").value;
+  const sev = document.getElementById("f_sev").value;
+  const photoEls = document.querySelectorAll("#photoPreview .photo-thumb img");
+
+  setSyncStatus('busy');
+  try{
+    // Upload photos first (optional — skip block if none provided)
+    const photoUrls = [];
+    for(let i=0;i<photoEls.length;i++){
+      const r = await apiCall('uploadPhoto', {
+        dataUrl: photoEls[i].src,
+        filename: `${outletCode}_${Date.now()}_${i+1}`
+      });
+      if(r.url) photoUrls.push(r.url);
+    }
+    // Create ticket
+    const r = await apiCall('createTicket', {
+      ticket: {
+        outletCode, item, make:"", model, partNo, qty, reason,
+        description: desc, severity: sev,
+        raisedBy: (currentUser?.name||"MST")+" (MST)",
+        photoUrls, photoCount: photoUrls.length
+      }
+    });
+    await loadAllFromCloud();
+    setSyncStatus('ok');
+    toast(`Ticket ${r.ticketId} submitted`, "Pending Engineering Officer approval", "success");
+    go("mytickets");
+  }catch(ex){
+    setSyncStatus('err');
+    toast("Submission failed", ex.message, "error");
+  }
+};
+
+/* ----- Override: IMPORT OUTLETS ----- */
+const _localConfirmImport = confirmImport;
+confirmImport = async function(rows){
+  if(!cloudMode) return _localConfirmImport(rows);
+  setSyncStatus('busy');
+  try{
+    const r = await apiCall('importOutlets', {rows});
+    await loadAllFromCloud();
+    setSyncStatus('ok');
+    toast("Import successful", `${r.added} new, ${r.updated} updated`, "success");
+    go("outlets");
+  }catch(e){
+    setSyncStatus('err');
+    toast("Import failed", e.message, "error");
+  }
+};
+
+/* ----- Override: CHANGE PASSWORD ----- */
+const _localChangePwd = changePassword;
+changePassword = async function(){
+  if(!cloudMode) return _localChangePwd();
+  const cur = prompt("Enter current password:");
+  if(cur===null) return;
+  const n1 = prompt("Enter new password (min 6 chars):");
+  if(!n1 || n1.length<6){toast("Invalid password","At least 6 characters","error");return}
+  const n2 = prompt("Confirm new password:");
+  if(n1!==n2){toast("Mismatch","New passwords do not match","error");return}
+  setSyncStatus('busy');
+  try{
+    await apiCall('changePassword', {curPwd:cur, newPwd:n1});
+    setSyncStatus('ok');
+    toast("Password changed","Your password was updated in the Sheet","success");
+  }catch(e){
+    setSyncStatus('err');
+    toast("Change failed", e.message, "error");
+  }
+};
+
+/* ----- Override: USER ENROLLMENT (officer only) ----- */
+async function loadUsersFromCloud(){
+  if(!cloudMode) return;
+  try{
+    const r = await apiCall('getUsers');
+    if(r.users){
+      users = {};
+      r.users.forEach(u => {
+        users[u.id] = {pwd:"••••••", name:u.name, role:u.role, roleLabel:u.roleLabel, territory:u.territory};
+      });
+    }
+  }catch(e){/* non-fatal */}
+}
+
+const _localSaveUser = saveUser;
+saveUser = async function(e){
+  e.preventDefault();
+  if(!cloudMode) return _localSaveUser(e);
+
+  const editId = document.getElementById("u_editId").value;
+  const id = document.getElementById("u_id").value.trim().toLowerCase();
+  const name = document.getElementById("u_name").value.trim();
+  const role = document.getElementById("u_role").value;
+  const roleLabel = document.getElementById("u_label").value.trim() || (role==="officer"?"Engineering Officer":role==="engineer"?"MST (Multi Skill Technician)":"Warehouse Staff");
+  const territory = document.getElementById("u_territory").value.trim();
+  const pwd = document.getElementById("u_pwd").value;
+
+  if(!id || !name || !role){toast("Missing data","User ID, Name and Role are required","error");return}
+  if(!editId && !pwd){toast("Password required","Set an initial password for the new user","error");return}
+  if(pwd && pwd.length<6){toast("Weak password","Password must be at least 6 characters","error");return}
+
+  setSyncStatus('busy');
+  try{
+    if(editId){
+      await apiCall('updateUser', {id:editId, name, role, roleLabel, territory, pwd:pwd||null});
+      toast("User updated", `${name} saved successfully`, "success");
+    } else {
+      await apiCall('createUser', {id, name, role, roleLabel, territory, pwd});
+      toast("User enrolled", `${name} can now log in with ID '${id}'`, "success");
+    }
+    await loadUsersFromCloud();
+    setSyncStatus('ok');
+    closeUserForm();
+    go("manageusers");
+  }catch(ex){
+    setSyncStatus('err');
+    toast("Save failed", ex.message, "error");
+  }
+};
+
+const _localDeleteUser = deleteUser;
+deleteUser = async function(id){
+  if(!cloudMode) return _localDeleteUser(id);
+  if(id===currentUser?.id){toast("Cannot remove yourself","Ask another officer to remove your account","warn");return}
+  if(!confirm(`Remove user '${id}' (${users[id]?.name})?\n\nThis cannot be undone. The user will no longer be able to log in.`)) return;
+  setSyncStatus('busy');
+  try{
+    await apiCall('deleteUser', {id});
+    await loadUsersFromCloud();
+    setSyncStatus('ok');
+    toast("User removed", `'${id}' has been removed`, "success");
+    go("manageusers");
+  }catch(e){
+    setSyncStatus('err');
+    toast("Remove failed", e.message, "error");
+  }
+};
+
+/* =====================================================
+   PERSISTENCE — save/load to localStorage
+   Data survives page refresh; try/catch in case storage
+   is unavailable (private mode / restricted env).
+   ===================================================== */
+const STORE_KEY = "bpcl_tracker_v1";
+
+function saveState(){
+  try{
+    const data = {tickets, outlets, users, session:currentUser?currentUser.id:null};
+    localStorage.setItem(STORE_KEY, JSON.stringify(data));
+  }catch(e){/* silent fail if storage unavailable */}
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(!raw) return null;
+    const data = JSON.parse(raw);
+    if(data.tickets) tickets = data.tickets;
+    if(data.outlets) outlets = data.outlets;
+    if(data.users) Object.assign(users, data.users);
+    return data.session || null;
+  }catch(e){return null}
+}
+
+function resetState(){
+  try{localStorage.removeItem(STORE_KEY)}catch(e){}
+  location.reload();
+}
+
+/* Wrap all data mutations to also save */
+const _origApprove = approveTicket;
+approveTicket = function(id){_origApprove(id); saveState()};
+const _origReject = rejectTicket;
+rejectTicket = function(id){_origReject(id); saveState()};
+const _origDispatch = dispatchTicket;
+dispatchTicket = function(id){_origDispatch(id); saveState()};
+const _origComplete = completeTicket;
+completeTicket = function(id){_origComplete(id); saveState()};
+const _origSubmit = submitTicket;
+submitTicket = function(e){_origSubmit(e); saveState()};
+const _origConfirmImport = confirmImport;
+confirmImport = function(rows){_origConfirmImport(rows); saveState()};
+
+/* =====================================================
+   TOAST NOTIFICATIONS (replaces alert)
+   ===================================================== */
+function toast(title, message, type){
+  type = type || "info";
+  const icons = {success:"✓", error:"✗", warn:"⚠", info:"i"};
+  const box = document.getElementById("toastBox");
+  const el = document.createElement("div");
+  el.className = "toast "+type;
+  el.innerHTML = `
+    <div class="ico">${icons[type]}</div>
+    <div class="body"><strong>${title}</strong>${message?`<small>${message}</small>`:""}</div>
+    <button class="close" onclick="this.parentElement.remove()">×</button>
+  `;
+  box.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add("show"));
+  setTimeout(()=>{
+    el.style.transform="translateX(400px)";
+    setTimeout(()=>el.remove(),300);
+  }, 4000);
+}
+
+/* Override native alert to use toast (friendlier) */
+window.alert = function(msg){
+  const lines = String(msg).split("\n").filter(Boolean);
+  const title = lines[0] || "Notification";
+  const body = lines.slice(1).join(" ");
+  let type = "info";
+  if(title.startsWith("✓")) type = "success";
+  else if(title.startsWith("✗") || title.includes("Error")) type = "error";
+  else if(title.startsWith("⚠") || title.startsWith("📦")) type = "warn";
+  toast(title, body, type);
+};
+
+/* =====================================================
+   ENGINEER DASHBOARD
+   ===================================================== */
+function renderEngineerDashboard(){
+  const fn = currentUser?.name?.split(" ")[0]||"";
+  const mine = tickets.filter(t=>t.raisedBy.startsWith(fn));
+  const pending = mine.filter(t=>t.status==="Pending").length;
+  const approved = mine.filter(t=>["Approved","Dispatched"].includes(t.status)).length;
+  const completed = mine.filter(t=>t.status==="Completed").length;
+  const thisMonth = mine.filter(t=>t.raisedOn.startsWith("2026-04")).length;
+  const recent = mine.slice(0,5);
+
+  document.getElementById("main").innerHTML = `
+    <div class="page-header">
+      <div>
+        <h1>MST Dashboard</h1>
+        <div class="sub">${currentUser?.name} &bull; ${currentUser?.territory}</div>
+      </div>
+      <button class="btn btn-primary" onclick="go('raise')">＋ Raise New Ticket</button>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card amber"><div class="label">My Pending</div><div class="val">${pending}</div><div class="delta">Awaiting officer approval</div></div>
+      <div class="stat-card blue"><div class="label">In Progress</div><div class="val">${approved}</div><div class="delta">Approved / dispatched</div></div>
+      <div class="stat-card green"><div class="label">Completed</div><div class="val">${completed}</div><div class="delta">Installation confirmed</div></div>
+      <div class="stat-card"><div class="label">Raised This Month</div><div class="val">${thisMonth}</div><div class="delta">April 2026</div></div>
+    </div>
+
+    <div class="card">
+      <h3>My Recent Tickets</h3>
+      ${recent.length?renderTicketTable(recent,true):"<div class='empty'>No tickets yet. Click 'Raise New Ticket' above.</div>"}
+    </div>
+
+    <div class="card">
+      <h3>Quick Actions</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:8px">
+        <button class="btn btn-secondary" onclick="go('raise')" style="justify-content:flex-start;padding:14px">
+          ＋ Raise New Replacement Ticket
+        </button>
+        <button class="btn btn-secondary" onclick="go('mytickets')" style="justify-content:flex-start;padding:14px">
+          📋 View All My Tickets (${mine.length})
+        </button>
+        <button class="btn btn-secondary" onclick="go('history')" style="justify-content:flex-start;padding:14px">
+          📜 Check Outlet Replacement History
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+/* =====================================================
+   WAREHOUSE DASHBOARD
+   ===================================================== */
+function renderWarehouseDashboard(){
+  const toDispatch = tickets.filter(t=>t.status==="Approved").length;
+  const dispatchedThisMonth = tickets.filter(t=>t.status==="Dispatched" && t.dispatchedOn?.startsWith("2026-04")).length;
+  const completed = tickets.filter(t=>t.status==="Completed").length;
+  const hoseIssued = tickets.filter(t=>["Dispatched","Completed"].includes(t.status) && t.item==="Hose").reduce((s,t)=>s+t.qty,0);
+  const nozzleIssued = tickets.filter(t=>["Dispatched","Completed"].includes(t.status) && t.item==="Nozzle").reduce((s,t)=>s+t.qty,0);
+
+  document.getElementById("main").innerHTML = `
+    <div class="page-header">
+      <div>
+        <h1>Warehouse Dashboard</h1>
+        <div class="sub">${currentUser?.name} &bull; ${currentUser?.territory}</div>
+      </div>
+      <button class="btn btn-primary" onclick="go('dispatchqueue')">📦 Dispatch Queue (${toDispatch})</button>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card amber"><div class="label">Ready to Dispatch</div><div class="val">${toDispatch}</div><div class="delta">Approved, pending warehouse action</div></div>
+      <div class="stat-card green"><div class="label">Dispatched (April)</div><div class="val">${dispatchedThisMonth}</div><div class="delta">This month</div></div>
+      <div class="stat-card blue"><div class="label">Total Hoses Issued</div><div class="val">${hoseIssued}</div><div class="delta">All-time from this warehouse</div></div>
+      <div class="stat-card blue"><div class="label">Total Nozzles Issued</div><div class="val">${nozzleIssued}</div><div class="delta">All-time from this warehouse</div></div>
+    </div>
+
+    <div class="card">
+      <h3>Pending Dispatch</h3>
+      ${toDispatch?renderTicketTable(tickets.filter(t=>t.status==="Approved"),true):"<div class='empty'>📦 All caught up — no pending dispatches.</div>"}
+    </div>
+  `;
+}
+
+/* =====================================================
+   OFFICER: MANAGE / ENROLL USERS
+   ===================================================== */
+function renderManageUsers(){
+  const list = Object.entries(users).map(([id,u])=>({id, ...u}));
+  const officers = list.filter(u=>u.role==="officer").length;
+  const msts     = list.filter(u=>u.role==="engineer").length;
+  const stores   = list.filter(u=>u.role==="warehouse").length;
+
+  document.getElementById("main").innerHTML = `
+    <div class="page-header">
+      <div><h1>Enroll Users</h1><div class="sub">Add and manage MSTs, Engineering Officers, and Warehouse Staff</div></div>
+      <button class="btn btn-primary" onclick="openUserForm()">＋ Enroll New User</button>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card blue"><div class="label">Engineering Officers</div><div class="val">${officers}</div><div class="delta">Approvers</div></div>
+      <div class="stat-card amber"><div class="label">MSTs</div><div class="val">${msts}</div><div class="delta">Multi Skill Technicians</div></div>
+      <div class="stat-card green"><div class="label">Warehouse Staff</div><div class="val">${stores}</div><div class="delta">Dispatch team</div></div>
+      <div class="stat-card"><div class="label">Total Users</div><div class="val">${list.length}</div><div class="delta">All roles</div></div>
+    </div>
+
+    <div class="card">
+      <h3>Enrolled Users</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>User ID</th><th>Name</th><th>Role</th><th>Territory</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${list.map(u=>{
+            const cls = u.role==="officer"?"s-approved":u.role==="engineer"?"s-pending":"s-dispatched";
+            const isMe = u.id===currentUser?.id;
+            return `<tr>
+              <td><strong>${u.id}</strong>${isMe?' <span style="color:var(--bpcl-blue);font-size:11px">(you)</span>':''}</td>
+              <td>${u.name}</td>
+              <td><span class="status ${cls}">${u.roleLabel}</span></td>
+              <td>${u.territory||""}</td>
+              <td>
+                <button class="btn btn-sm btn-secondary" onclick="openUserForm('${u.id}')">Edit</button>
+                ${isMe?'':`<button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}')">Remove</button>`}
+              </td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ENROLLMENT FORM (hidden, shown via openUserForm) -->
+    <div class="modal-bg" id="userModalBg">
+      <div class="modal" style="max-width:560px">
+        <div class="modal-head">
+          <h2 id="userModalTitle">Enroll New User</h2>
+          <button class="x" onclick="closeUserForm()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form id="userForm" onsubmit="saveUser(event)">
+            <input type="hidden" id="u_editId" value="" />
+            <div class="form-grid">
+              <div class="form-row">
+                <label>User ID <span class="req">*</span></label>
+                <input type="text" id="u_id" required pattern="[a-zA-Z0-9._-]+"
+                  placeholder="e.g. ramesh.kumar" />
+                <div class="helper">Lowercase, no spaces. Letters, numbers, dot, underscore, hyphen.</div>
+              </div>
+              <div class="form-row">
+                <label>Full Name <span class="req">*</span></label>
+                <input type="text" id="u_name" required placeholder="e.g. Ramesh Kumar" />
+              </div>
+              <div class="form-row">
+                <label>Role <span class="req">*</span></label>
+                <select required id="u_role" onchange="document.getElementById('u_label').value=this.options[this.selectedIndex].dataset.label">
+                  <option value="">-- Select --</option>
+                  <option value="officer" data-label="Engineering Officer">Engineering Officer</option>
+                  <option value="engineer" data-label="MST (Multi Skill Technician)">MST (Multi Skill Technician)</option>
+                  <option value="warehouse" data-label="Warehouse Staff">Warehouse Staff</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <label>Display Role Label</label>
+                <input type="text" id="u_label" placeholder="Auto-filled from role" />
+                <div class="helper">Editable — shown on tickets and dashboard.</div>
+              </div>
+              <div class="form-row full">
+                <label>Territory / Division</label>
+                <input type="text" id="u_territory" placeholder="e.g. Belgaum Division" />
+              </div>
+              <div class="form-row full">
+                <label id="u_pwdLbl">Password <span class="req">*</span></label>
+                <input type="text" id="u_pwd" placeholder="Min 6 characters" />
+                <div class="helper" id="u_pwdHelp">Set an initial password — user can change it after first login.</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:18px">
+              <button type="submit" class="btn btn-primary">Save User</button>
+              <button type="button" class="btn btn-secondary" onclick="closeUserForm()">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function openUserForm(editId){
+  const modal = document.getElementById("userModalBg");
+  modal.classList.add("show");
+  document.getElementById("userForm").reset();
+  document.getElementById("u_editId").value = editId || "";
+  if(editId){
+    const u = users[editId];
+    document.getElementById("userModalTitle").textContent = "Edit User — "+editId;
+    document.getElementById("u_id").value = editId;
+    document.getElementById("u_id").readOnly = true;
+    document.getElementById("u_name").value = u.name;
+    document.getElementById("u_role").value = u.role;
+    document.getElementById("u_label").value = u.roleLabel;
+    document.getElementById("u_territory").value = u.territory||"";
+    document.getElementById("u_pwd").value = "";
+    document.getElementById("u_pwdLbl").innerHTML = "Reset Password <span style='color:var(--muted);font-weight:normal'>(leave blank to keep current)</span>";
+    document.getElementById("u_pwdHelp").textContent = "Optional — only fill in if you want to reset this user's password.";
+  } else {
+    document.getElementById("userModalTitle").textContent = "Enroll New User";
+    document.getElementById("u_id").readOnly = false;
+    document.getElementById("u_pwdLbl").innerHTML = 'Password <span class="req">*</span>';
+    document.getElementById("u_pwdHelp").textContent = "Set an initial password — user can change it after first login.";
+  }
+}
+
+function closeUserForm(){
+  document.getElementById("userModalBg").classList.remove("show");
+}
+
+function saveUser(e){
+  e.preventDefault();
+  const editId = document.getElementById("u_editId").value;
+  const id = document.getElementById("u_id").value.trim().toLowerCase();
+  const name = document.getElementById("u_name").value.trim();
+  const role = document.getElementById("u_role").value;
+  const roleLabel = document.getElementById("u_label").value.trim() || (role==="officer"?"Engineering Officer":role==="engineer"?"MST (Multi Skill Technician)":"Warehouse Staff");
+  const territory = document.getElementById("u_territory").value.trim();
+  const pwd = document.getElementById("u_pwd").value;
+
+  if(!id || !name || !role){toast("Missing data","User ID, Name and Role are required","error");return}
+  if(!editId && !pwd){toast("Password required","Set an initial password for the new user","error");return}
+  if(pwd && pwd.length<6){toast("Weak password","Password must be at least 6 characters","error");return}
+  if(!editId && users[id]){toast("Duplicate User ID",`'${id}' already exists. Pick a different ID.`,"error");return}
+
+  if(editId){
+    users[editId].name = name;
+    users[editId].role = role;
+    users[editId].roleLabel = roleLabel;
+    users[editId].territory = territory;
+    if(pwd) users[editId].pwd = pwd;
+    toast("User updated", `${name} saved successfully`, "success");
+  } else {
+    users[id] = {pwd, name, role, roleLabel, territory};
+    toast("User enrolled", `${name} can now log in with ID '${id}'`, "success");
+  }
+  saveState && saveState();
+  closeUserForm();
+  go("manageusers");
+}
+
+function deleteUser(id){
+  if(id===currentUser?.id){toast("Cannot remove yourself","Ask another officer to remove your account","warn");return}
+  if(!confirm(`Remove user '${id}' (${users[id]?.name})?\n\nThis cannot be undone. The user will no longer be able to log in.`)) return;
+  delete users[id];
+  saveState && saveState();
+  toast("User removed", `'${id}' has been removed`, "success");
+  go("manageusers");
+}
+
+/* =====================================================
+   SETTINGS
+   ===================================================== */
+function renderSettings(){
+  document.getElementById("main").innerHTML = `
+    <div class="page-header">
+      <div><h1>Settings</h1><div class="sub">Account &amp; application preferences</div></div>
+    </div>
+
+    <div class="card">
+      <h3>My Account</h3>
+      <div class="setting-row">
+        <div class="info"><strong>User ID</strong><small>Your login identifier</small></div>
+        <div><code style="background:#f0f4fa;padding:4px 10px;border-radius:4px">${currentUser?.id}</code></div>
+      </div>
+      <div class="setting-row">
+        <div class="info"><strong>Full Name</strong><small>Display name shown on tickets</small></div>
+        <div>${currentUser?.name}</div>
+      </div>
+      <div class="setting-row">
+        <div class="info"><strong>Role</strong><small>Access level granted</small></div>
+        <div><span class="status s-approved">${currentUser?.roleLabel}</span></div>
+      </div>
+      <div class="setting-row">
+        <div class="info"><strong>Territory</strong><small>Assigned geographical scope</small></div>
+        <div>${currentUser?.territory}</div>
+      </div>
+      <div class="setting-row">
+        <div class="info"><strong>Password</strong><small>Last changed: session start</small></div>
+        <button class="btn btn-secondary btn-sm" onclick="changePassword()">Change Password</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>☁ Cloud Sync &mdash; Google Sheets Backend</h3>
+      <div class="setting-row">
+        <div class="info">
+          <strong>Connection Status</strong>
+          <small>${cloudMode
+            ? 'Live data flows through your connected Google Sheet. Every action saves to Sheets in real-time.'
+            : 'Currently using local browser storage only. Connect a Google Sheet for shared multi-user data.'}</small>
+        </div>
+        <div>
+          <span class="cloud-status ${cloudMode?'connected':'disconnected'}">
+            ${cloudMode?'● CONNECTED':'○ NOT CONNECTED'}
+          </span>
+        </div>
+      </div>
+      <div class="cloud-config">
+        <label>Apps Script Web App URL</label>
+        <input type="text" id="apiUrlInp" placeholder="https://script.google.com/macros/s/AKfy.../exec" value="${apiUrl||''}" />
+        <div class="helper">Paste the Web App URL from your deployed Apps Script. See setup guide if you haven't deployed it yet.</div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="testCloudConnection()">🔌 Test Connection</button>
+          ${cloudMode
+            ? `<button class="btn btn-danger btn-sm" onclick="disconnectCloud()">✗ Disconnect</button>
+               <button class="btn btn-secondary btn-sm" onclick="manualSync()">↻ Sync Now</button>`
+            : `<button class="btn btn-success btn-sm" onclick="connectCloud()">✓ Save &amp; Connect</button>`}
+        </div>
+        <div id="cloudTestResult" style="margin-top:10px;font-size:12px"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Application Data</h3>
+      <div class="setting-row">
+        <div class="info"><strong>Storage</strong><small>All tickets and outlets persist on this device via browser storage. Data is local to this browser only.</small></div>
+        <div>${countStorage()}</div>
+      </div>
+      <div class="setting-row">
+        <div class="info"><strong>Export All Data</strong><small>Download a backup of all tickets and outlets (JSON)</small></div>
+        <button class="btn btn-secondary btn-sm" onclick="exportAllData()">⬇ Export Backup</button>
+      </div>
+      <div class="setting-row">
+        <div class="info"><strong>Reset Demo Data</strong><small style="color:var(--red)">Clears all saved data and restores factory demo dataset. Cannot be undone.</small></div>
+        <button class="btn btn-danger btn-sm" onclick="confirmReset()">⟲ Reset to Defaults</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>About</h3>
+      <div class="setting-row">
+        <div class="info"><strong>Application</strong><small>BPCL Hose &amp; Nozzle Replacement Tracker</small></div>
+        <div>v1.0.0</div>
+      </div>
+      <div class="setting-row">
+        <div class="info"><strong>Division</strong><small>Engineering &mdash; Retail Service Management</small></div>
+        <div>Bharat Petroleum Corporation Limited</div>
+      </div>
+      <div class="setting-row">
+        <div class="info"><strong>Support</strong><small>For issues or feature requests</small></div>
+        <div>bpbajiya2016@gmail.com</div>
+      </div>
+      <div class="setting-row">
+        <div class="info"><strong>Tagline</strong><small>BPCL Corporate</small></div>
+        <div style="color:var(--bpcl-yellow-2);font-style:italic;font-weight:600">Energising Lives</div>
+      </div>
+    </div>
+  `;
+}
+
+function countStorage(){
+  return `${tickets.length} tickets &middot; ${outlets.length} outlets`;
+}
+
+function changePassword(){
+  const cur = prompt("Enter current password:");
+  if(cur===null) return;
+  if(cur !== users[currentUser.id].pwd){toast("Incorrect password","Current password does not match","error");return}
+  const n1 = prompt("Enter new password (min 6 chars):");
+  if(!n1 || n1.length<6){toast("Invalid password","Password must be at least 6 characters","error");return}
+  const n2 = prompt("Confirm new password:");
+  if(n1!==n2){toast("Mismatch","New passwords do not match","error");return}
+  users[currentUser.id].pwd = n1;
+  saveState();
+  toast("Password changed","Your password was updated successfully","success");
+}
+
+function exportAllData(){
+  const data = {exportedAt:new Date().toISOString(), tickets, outlets};
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `BPCL_Tracker_Backup_${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast("Backup downloaded","All data exported as JSON","success");
+}
+
+function confirmReset(){
+  if(!confirm("Reset all data to factory defaults?\n\nAll custom tickets and imported outlets will be permanently deleted. This cannot be undone.")) return;
+  resetState();
+}
+
+/* =====================================================
+   PRINT TICKET — from modal
+   ===================================================== */
+function printTicket(){
+  window.print();
+}
+
+/* Add Print button to modal for non-pending tickets */
+const _origView = viewTicket;
+viewTicket = function(id){
+  _origView(id);
+  const foot = document.getElementById("modalFoot");
+  // prepend print button
+  const printBtn = document.createElement("button");
+  printBtn.className = "btn btn-secondary";
+  printBtn.innerHTML = "🖨 Print";
+  printBtn.onclick = printTicket;
+  foot.insertBefore(printBtn, foot.firstChild);
+};
+
+/* =====================================================
+   KEYBOARD SHORTCUTS
+   ===================================================== */
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape"){
+    if(document.getElementById("modalBg").classList.contains("show")) closeModal();
+  }
+});
+
+/* =====================================================
+   INIT — splash → load state → show login if not session
+   ===================================================== */
+document.getElementById("sidebar").innerHTML = "";
+document.getElementById("main").innerHTML = "";
+
+// Hide splash after 1.2s
+setTimeout(()=>{
+  document.getElementById("splash").classList.add("hidden");
+  setTimeout(()=>document.getElementById("splash").remove(), 500);
+}, 1200);
+
+// Show sync button if cloud-connected
+if(cloudMode) document.getElementById("syncBtn").style.display = "inline-flex";
+
+// Local-mode: try to restore session from localStorage.
+// Cloud-mode: always require fresh login (token may have expired server-side).
+const savedSession = loadState();
+if(!cloudMode && savedSession && users[savedSession]){
+  const u = users[savedSession];
+  currentUser = {id:savedSession, ...u};
+  currentRole = u.role;
+  currentPage = defaultPage[u.role];
+  setTimeout(()=>{
+    document.getElementById("loginPage").style.display = "none";
+    document.getElementById("userName").textContent = u.name;
+    document.getElementById("userRole").textContent = u.roleLabel+" • "+u.territory;
+    document.getElementById("userAvatar").textContent = u.name.split(" ").map(x=>x[0]).join("").substring(0,2);
+    renderSidebar();
+    renderMain();
+    toast("Welcome back", `Signed in as ${u.name}`, "success");
+  }, 1200);
+}
+</script>
+
+</body>
+</html>
