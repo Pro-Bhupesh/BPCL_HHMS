@@ -667,9 +667,16 @@ async function loadAllFromCloud(){
   // Officers also fetch the user list for the Enroll Users page
   if(currentUser && currentUser.role==='officer'){
     calls.push(apiCall('getUsers').catch(()=>({users:null})));
+  } else {
+    calls.push(Promise.resolve({users:null}));
   }
-  const results = await Promise.all(calls);
-  const [tRes, oRes, uRes] = results;
+  // Warehouse + officer fetch stock inventory
+  if(currentUser && (currentUser.role==='warehouse' || currentUser.role==='officer')){
+    calls.push(apiCall('getStock').catch(()=>({stock:null})));
+  } else {
+    calls.push(Promise.resolve({stock:null}));
+  }
+  const [tRes, oRes, uRes, sRes] = await Promise.all(calls);
   if(tRes.tickets) tickets = tRes.tickets;
   if(oRes.outlets) outlets = oRes.outlets;
   if(uRes && uRes.users){
@@ -678,6 +685,7 @@ async function loadAllFromCloud(){
       users[u.id] = {pwd:"••••••", name:u.name, role:u.role, roleLabel:u.roleLabel, territory:u.territory};
     });
   }
+  if(sRes && sRes.stock) stock = sRes.stock;
 }
 
 /* Sync indicator in topbar (only visible in cloud mode) */
@@ -698,6 +706,7 @@ function setSyncStatus(state){
 let users   = {};   // populated by loadUsersFromCloud (officer only)
 let outlets = [];   // populated by loadAllFromCloud
 let tickets = [];   // populated by loadAllFromCloud
+let stock   = [];   // populated by loadStockFromCloud (warehouse + officer)
 
 let currentUser = null;
 
@@ -723,6 +732,7 @@ const navConfig = {
     {id:"outlets",icon:"⛽",label:"Retail Outlets",badge:()=>outlets.length},
     {id:"importoutlets",icon:"⬆",label:"Import Outlets"},
     {id:"manageusers",icon:"👥",label:"Enroll Users",badge:()=>Object.keys(users).length},
+    {id:"stockview",icon:"📦",label:"Stock Inventory"},
     {title:"ACCOUNT"},
     {id:"settings",icon:"⚙",label:"Settings"}
   ],
@@ -744,6 +754,9 @@ const navConfig = {
     {id:"dispatchqueue",icon:"📦",label:"Dispatch Queue",badge:()=>tickets.filter(t=>t.status==="Approved").length,badgeRed:true},
     {id:"dispatched",icon:"✓",label:"Dispatched"},
     {id:"monthly",icon:"📈",label:"Monthly Consumption"},
+    {title:"INVENTORY"},
+    {id:"receivestock",icon:"⬇",label:"Receive Stock (PO)"},
+    {id:"stockview",icon:"📊",label:"Stock Inventory"},
     {title:"ACCOUNT"},
     {id:"settings",icon:"⚙",label:"Settings"}
   ]
@@ -846,6 +859,7 @@ function renderMain(){
     "officer:outlets":renderOutlets,
     "officer:importoutlets":renderImportOutlets,
     "officer:manageusers":renderManageUsers,
+    "officer:stockview":renderStockInventory,
     "officer:settings":renderSettings,
     "engineer:dashboard":renderEngineerDashboard,
     "engineer:raise":renderRaiseTicket,
@@ -856,6 +870,8 @@ function renderMain(){
     "warehouse:dispatchqueue":renderDispatchQueue,
     "warehouse:dispatched":renderDispatched,
     "warehouse:monthly":renderMonthly,
+    "warehouse:receivestock":renderReceiveStock,
+    "warehouse:stockview":renderStockInventory,
     "warehouse:settings":renderSettings
   };
   (renderers[key] || (()=>{m.innerHTML="<div class='empty'>Page not found</div>"}))();
@@ -863,10 +879,14 @@ function renderMain(){
 
 /* ---------- OFFICER: DASHBOARD ---------- */
 function renderOfficerDashboard(){
+  const thisMonthKey = _currentMonthKey();          // e.g. "2026-05"
+  const thisMonthLabel = _currentMonthLabel();      // e.g. "May 2026"
   const pending = tickets.filter(t=>t.status==="Pending").length;
   const approved = tickets.filter(t=>t.status==="Approved").length;
-  const thisMonth = tickets.filter(t=>t.raisedOn.startsWith("2026-04")).length;
-  const rejected = tickets.filter(t=>t.status==="Rejected").length;
+  const thisMonth = tickets.filter(t=>t.raisedOn && t.raisedOn.startsWith(thisMonthKey)).length;
+  const rejectedThisMonth = tickets.filter(t=>
+    t.status==="Rejected" && t.approvedOn && t.approvedOn.startsWith(thisMonthKey)
+  ).length;
   const recent = tickets.slice(0,5);
 
   document.getElementById("main").innerHTML = `
@@ -881,25 +901,60 @@ function renderOfficerDashboard(){
     <div class="stat-grid">
       <div class="stat-card amber"><div class="label">Pending Approvals</div><div class="val">${pending}</div><div class="delta">Requires your action</div></div>
       <div class="stat-card blue"><div class="label">Awaiting Dispatch</div><div class="val">${approved}</div><div class="delta">Approved — with warehouse</div></div>
-      <div class="stat-card green"><div class="label">Tickets This Month</div><div class="val">${thisMonth}</div><div class="delta">April 2026</div></div>
-      <div class="stat-card"><div class="label">Rejected This Month</div><div class="val">${rejected}</div><div class="delta">Warranty / invalid claims</div></div>
+      <div class="stat-card green"><div class="label">Tickets This Month</div><div class="val">${thisMonth}</div><div class="delta">${thisMonthLabel}</div></div>
+      <div class="stat-card"><div class="label">Rejected This Month</div><div class="val">${rejectedThisMonth}</div><div class="delta">${thisMonthLabel} — warranty / invalid claims</div></div>
     </div>
 
-    <div class="card">
-      <h3>Replacement Trend &mdash; Last 6 Months</h3>
-      <div class="bar-chart" style="padding-top:30px;padding-bottom:30px">
-        <div class="bar" style="height:40%"><span class="v">8</span><span class="lbl">Nov</span></div>
-        <div class="bar" style="height:55%"><span class="v">11</span><span class="lbl">Dec</span></div>
-        <div class="bar" style="height:70%"><span class="v">14</span><span class="lbl">Jan</span></div>
-        <div class="bar" style="height:45%"><span class="v">9</span><span class="lbl">Feb</span></div>
-        <div class="bar" style="height:65%"><span class="v">13</span><span class="lbl">Mar</span></div>
-        <div class="bar" style="height:80%;background:linear-gradient(180deg,var(--bpcl-yellow),var(--bpcl-yellow-2))"><span class="v">${thisMonth}</span><span class="lbl">Apr</span></div>
-      </div>
-    </div>
+    ${renderReplacementTrendCard()}
 
     <div class="card">
       <h3>Recent Tickets</h3>
-      ${renderTicketTable(recent,true)}
+      ${recent.length ? renderTicketTable(recent,true) : "<div class='empty'>No tickets yet.</div>"}
+    </div>
+  `;
+}
+
+/* ---------- HELPERS — shared across dashboards ---------- */
+function _currentMonthKey(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function _currentMonthLabel(){
+  const d = new Date();
+  return ["January","February","March","April","May","June","July","August","September","October","November","December"][d.getMonth()] + " " + d.getFullYear();
+}
+function _shortMonth(d){
+  return ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()];
+}
+
+/* Replacement trend bar chart — last 6 months including current, computed from real ticket data */
+function renderReplacementTrendCard(){
+  const today = new Date();
+  // Build the last 6 month windows (newest = current month)
+  const months = [];
+  for(let i=5; i>=0; i--){
+    const d = new Date(today.getFullYear(), today.getMonth()-i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const count = tickets.filter(t => t.raisedOn && t.raisedOn.startsWith(key)).length;
+    months.push({key, label:_shortMonth(d), count, isCurrent:i===0});
+  }
+  const max = Math.max(1, ...months.map(m=>m.count));   // never 0 to avoid /0
+  const allZero = months.every(m=>m.count===0);
+
+  return `
+    <div class="card">
+      <h3>Replacement Trend &mdash; Last 6 Months</h3>
+      ${allZero
+        ? `<div class='empty' style='padding:40px'>📊 No tickets in the last 6 months yet. The chart will appear once data starts flowing in.</div>`
+        : `<div class="bar-chart" style="padding-top:30px;padding-bottom:30px">
+            ${months.map(m => {
+              const heightPct = Math.max(4, Math.round((m.count/max)*90));   // min 4% so empty bars are visible
+              const style = m.isCurrent
+                ? `height:${heightPct}%;background:linear-gradient(180deg,var(--bpcl-yellow),var(--bpcl-yellow-2))`
+                : `height:${heightPct}%`;
+              return `<div class="bar" style="${style}"><span class="v">${m.count}</span><span class="lbl">${m.label}</span></div>`;
+            }).join("")}
+          </div>`}
     </div>
   `;
 }
@@ -1055,38 +1110,127 @@ function renderFrequency(){
 
 /* ---------- MONTHLY CONSUMPTION REPORT ---------- */
 function renderMonthly(){
-  const months = ["2026-03","2026-04"];
+  // Build month list dynamically: every distinct YYYY-MM that appears in any
+  // ticket (raisedOn OR dispatchedOn), sorted newest first.
+  const monthSet = new Set();
+  tickets.forEach(t => {
+    if(t.raisedOn && /^\d{4}-\d{2}/.test(t.raisedOn)) monthSet.add(t.raisedOn.slice(0,7));
+    if(t.dispatchedOn && /^\d{4}-\d{2}/.test(t.dispatchedOn)) monthSet.add(t.dispatchedOn.slice(0,7));
+  });
+  // Always include current month so a fresh report shows even if no tickets yet
+  const today = new Date();
+  monthSet.add(`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`);
+  const months = [...monthSet].sort().reverse();   // newest first
+
+  // For each month, compute:
+  //   raised      → tickets where raisedOn is in this month (any status)
+  //   dispatched  → tickets actually dispatched this month (status=Dispatched|Completed AND dispatchedOn matches)
+  //   hosesQty    → sum of qty for dispatched hoses this month
+  //   nozzlesQty  → sum of qty for dispatched nozzles this month
+  //   approved    → tickets approved/rejected in this month (officer actions)  → uses approvedOn
+  //   rejected    → tickets where approvedOn is in this month AND status=Rejected
+  //   pendingEOM  → still pending at end of month (raised<=month, status=Pending)
   const data = months.map(m=>{
-    const list = tickets.filter(t=>t.raisedOn.startsWith(m));
+    const raised = tickets.filter(t => t.raisedOn && t.raisedOn.startsWith(m));
+    const dispatched = tickets.filter(t =>
+      ["Dispatched","Completed"].includes(t.status) &&
+      t.dispatchedOn && t.dispatchedOn.startsWith(m)
+    );
+    const approvedThisMonth = tickets.filter(t =>
+      t.approvedBy && t.approvedOn && t.approvedOn.startsWith(m) && t.status !== "Rejected"
+    );
+    const rejectedThisMonth = tickets.filter(t =>
+      t.status === "Rejected" && t.approvedOn && t.approvedOn.startsWith(m)
+    );
     return {
-      month:m,
-      total:list.length,
-      hoses:list.filter(t=>t.item==="Hose").reduce((s,t)=>s+t.qty,0),
-      nozzles:list.filter(t=>t.item==="Nozzle").reduce((s,t)=>s+t.qty,0),
-      approved:list.filter(t=>["Approved","Dispatched","Completed"].includes(t.status)).length,
-      rejected:list.filter(t=>t.status==="Rejected").length
+      month:    m,
+      raised:   raised.length,
+      hosesQty: dispatched.filter(t=>t.item==="Hose").reduce((s,t)=>s+(t.qty||0), 0),
+      nozzlesQty: dispatched.filter(t=>t.item==="Nozzle").reduce((s,t)=>s+(t.qty||0), 0),
+      approved: approvedThisMonth.length,
+      rejected: rejectedThisMonth.length
     };
   });
 
+  // Totals
+  const totals = data.reduce((acc, d) => ({
+    raised: acc.raised + d.raised,
+    hosesQty: acc.hosesQty + d.hosesQty,
+    nozzlesQty: acc.nozzlesQty + d.nozzlesQty,
+    approved: acc.approved + d.approved,
+    rejected: acc.rejected + d.rejected
+  }), {raised:0, hosesQty:0, nozzlesQty:0, approved:0, rejected:0});
+
+  const territory = currentUser?.territory || "All Territories";
+
   document.getElementById("main").innerHTML = `
     <div class="page-header">
-      <div><h1>Monthly Consumption Report</h1><div class="sub">Quantities issued per month &mdash; Gujarat Territory</div></div>
-      <button class="btn btn-secondary" onclick="alert('Export to Excel coming in production build')">⬇ Export to Excel</button>
+      <div>
+        <h1>Monthly Consumption Report</h1>
+        <div class="sub">Quantities <strong>actually dispatched</strong> per month &mdash; ${territory}</div>
+      </div>
+      <button class="btn btn-secondary" onclick="exportMonthlyCsv()">⬇ Export CSV</button>
     </div>
+
+    <div class="alert info" style="font-size:12px">
+      <strong>How to read this report:</strong> "Hoses / Nozzles Dispatched" counts only items that the warehouse actually issued in the month (status Dispatched or Completed, by dispatched date). "Tickets Raised" is by the date the MST opened the ticket — they may or may not be dispatched yet.
+    </div>
+
     <div class="card">
       <table>
-        <thead><tr><th>Month</th><th>Total Tickets</th><th>Hoses Issued</th><th>Nozzles Issued</th><th>Approved</th><th>Rejected</th></tr></thead>
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th style="text-align:right">Tickets Raised</th>
+            <th style="text-align:right">Hoses Dispatched</th>
+            <th style="text-align:right">Nozzles Dispatched</th>
+            <th style="text-align:right">Total Items</th>
+            <th style="text-align:right">Approved</th>
+            <th style="text-align:right">Rejected</th>
+          </tr>
+        </thead>
         <tbody>
           ${data.map(d=>`
             <tr>
               <td><strong>${fmtMonth(d.month)}</strong></td>
-              <td>${d.total}</td><td>${d.hoses}</td><td>${d.nozzles}</td>
-              <td>${d.approved}</td><td>${d.rejected}</td>
+              <td style="text-align:right">${d.raised}</td>
+              <td style="text-align:right">${d.hosesQty}</td>
+              <td style="text-align:right">${d.nozzlesQty}</td>
+              <td style="text-align:right;font-weight:600">${d.hosesQty + d.nozzlesQty}</td>
+              <td style="text-align:right">${d.approved}</td>
+              <td style="text-align:right">${d.rejected}</td>
             </tr>`).join("")}
+          <tr style="background:var(--bg);font-weight:700">
+            <td>Total (${data.length} month${data.length===1?'':'s'})</td>
+            <td style="text-align:right">${totals.raised}</td>
+            <td style="text-align:right">${totals.hosesQty}</td>
+            <td style="text-align:right">${totals.nozzlesQty}</td>
+            <td style="text-align:right">${totals.hosesQty + totals.nozzlesQty}</td>
+            <td style="text-align:right">${totals.approved}</td>
+            <td style="text-align:right">${totals.rejected}</td>
+          </tr>
         </tbody>
       </table>
     </div>
   `;
+  // Stash data for the CSV export button
+  window._monthlyReportData = {data, totals, territory};
+}
+
+function exportMonthlyCsv(){
+  const r = window._monthlyReportData;
+  if(!r){toast("Nothing to export","Open the Monthly Consumption page first","warn");return}
+  const lines = [];
+  lines.push(`BPCL Monthly Consumption Report - ${r.territory}`);
+  lines.push(`Generated: ${new Date().toLocaleString("en-IN")}`);
+  lines.push("");
+  lines.push("Month,Tickets Raised,Hoses Dispatched,Nozzles Dispatched,Total Items,Approved,Rejected");
+  r.data.forEach(d => {
+    lines.push(`${fmtMonth(d.month)},${d.raised},${d.hosesQty},${d.nozzlesQty},${d.hosesQty+d.nozzlesQty},${d.approved},${d.rejected}`);
+  });
+  lines.push(`Total,${r.totals.raised},${r.totals.hosesQty},${r.totals.nozzlesQty},${r.totals.hosesQty+r.totals.nozzlesQty},${r.totals.approved},${r.totals.rejected}`);
+  triggerDownload(lines.join("\n"), `BPCL_Monthly_Consumption_${new Date().toISOString().split('T')[0]}.csv`);
+  toast("CSV downloaded", `${r.data.length} month(s) exported`, "success");
 }
 
 /* ---------- OUTLET MASTER ---------- */
@@ -1574,6 +1718,52 @@ function viewTicket(id){
   const outlet = outlets.find(o=>o.code===t.outletCode)||{};
   const sClass = "s-"+t.status.toLowerCase();
 
+  // Build outlet history section (shown to officer when ticket is Pending — most useful for approval)
+  let historyHtml = "";
+  if(currentRole==="officer" && t.status==="Pending"){
+    const history = tickets.filter(x => x.outletCode === t.outletCode && x.id !== t.id);
+    const hoses = history.filter(x => x.item==="Hose").length;
+    const nozzles = history.filter(x => x.item==="Nozzle").length;
+    const completed = history.filter(x => x.status==="Completed").length;
+    const rejected = history.filter(x => x.status==="Rejected").length;
+    // Last 90 days for "recent" assessment
+    const cutoff = Date.now() - 90*24*60*60*1000;
+    const recent90 = history.filter(x => {
+      const d = new Date(x.raisedOn).getTime();
+      return !isNaN(d) && d >= cutoff;
+    }).length;
+    const flag = recent90 >= 3
+      ? `<span style="background:#fff3cd;color:#856404;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">⚠ ${recent90} replacements in last 90 days — review carefully</span>`
+      : '';
+
+    historyHtml = `
+      <div class="section-title">Outlet History &mdash; ${t.outletCode} ${flag}</div>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="k">Total prior tickets</div><div class="v">${history.length}</div></div>
+        <div class="detail-item"><div class="k">Hoses / Nozzles replaced</div><div class="v">${hoses} / ${nozzles}</div></div>
+        <div class="detail-item"><div class="k">Completed</div><div class="v">${completed}</div></div>
+        <div class="detail-item"><div class="k">Rejected (warranty/invalid)</div><div class="v">${rejected}</div></div>
+      </div>
+      ${history.length ? `
+      <div style="margin-top:10px;font-size:12px;color:var(--muted)">Most recent ${Math.min(5, history.length)} tickets:</div>
+      <table style="margin-top:6px;font-size:13px">
+        <thead><tr><th>Ticket</th><th>Item</th><th>Qty</th><th>Reason</th><th>Status</th><th>Raised</th></tr></thead>
+        <tbody>
+          ${history.slice(0,5).map(h => `
+            <tr>
+              <td>${h.id}</td>
+              <td>${h.item}</td>
+              <td>${h.qty}</td>
+              <td style="font-size:12px">${h.reason}</td>
+              <td><span class="status s-${h.status.toLowerCase()}">${h.status}</span></td>
+              <td>${fmtDate(h.raisedOn)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>` : `<div style="margin-top:8px;color:var(--muted);font-size:13px;font-style:italic">No prior tickets — this is the first replacement raised for this outlet.</div>`}
+    `;
+  }
+
   document.getElementById("modalTitle").textContent = t.id;
   document.getElementById("modalBody").innerHTML = `
     <div style="margin-bottom:14px">
@@ -1588,6 +1778,8 @@ function viewTicket(id){
       <div class="detail-item"><div class="k">Location</div><div class="v">${outlet.city||"-"}</div></div>
       <div class="detail-item"><div class="k">Dealer</div><div class="v">${outlet.dealer||"-"}</div></div>
     </div>
+
+    ${historyHtml}
 
     <div class="section-title">Item</div>
     <div class="detail-grid">
@@ -1607,6 +1799,13 @@ function viewTicket(id){
         </div>
       </div></div>
     </div>
+
+    ${(t.poNo || t.dcNo) ? `
+    <div class="section-title">Dispatch</div>
+    <div class="detail-grid">
+      <div class="detail-item"><div class="k">DC Number</div><div class="v">${t.dcNo||"-"}</div></div>
+      <div class="detail-item"><div class="k">PO Number</div><div class="v">${t.poNo||"-"}</div></div>
+    </div>` : ''}
 
     <div class="section-title">Timeline</div>
     <ul class="timeline">
@@ -1912,14 +2111,106 @@ rejectTicket = async function(id){
 const _localDispatch = dispatchTicket;
 dispatchTicket = async function(id){
   if(!cloudMode) return _localDispatch(id);
+  // Open a richer dispatch modal that lets warehouse pick a PO + DC No.
+  openDispatchModal(id);
+};
+
+/* Dispatch Modal — DC Number + PO selection (auto-pick if only one PO has stock) */
+function openDispatchModal(ticketId){
+  const t = tickets.find(x=>x.id===ticketId);
+  if(!t){toast("Ticket not found",ticketId,"error");return}
   const yr = new Date().getFullYear();
   const territoryCode = (currentUser?.territory||"BPCL").split(/\s+/)[0].slice(0,3).toUpperCase();
   const defaultDc = `DC/${territoryCode}/${yr}/`;
-  const dcNo = prompt("Dispatch reference (DC No.):", defaultDc);
-  if(!dcNo) return;
+
+  // Filter POs: same item type, has remaining stock >= ticket qty
+  const eligible = stock.filter(s => s.item === t.item && s.balance >= t.qty);
+  let poInputHtml = '';
+  if(eligible.length === 0){
+    poInputHtml = `
+      <div style="background:#fee;color:var(--red);padding:12px;border-radius:6px;font-size:13px;border-left:3px solid var(--red)">
+        ⚠ <strong>No PO has enough stock for this dispatch.</strong>
+        Ticket needs ${t.qty} ${t.item}(s) but no PO has that many available.
+        <br/><br/>Receive a new PO first (Inventory → Receive Stock) or proceed without a PO (no stock will be tracked).
+      </div>
+      <input type="hidden" id="disp_po" value="" />
+      <label style="margin-top:12px;display:block">
+        <input type="checkbox" id="disp_skip" /> Dispatch anyway, without a PO
+      </label>
+    `;
+  } else if(eligible.length === 1){
+    const po = eligible[0];
+    poInputHtml = `
+      <div style="background:#eaf6ec;color:var(--green);padding:10px;border-radius:6px;font-size:13px;border-left:3px solid var(--green)">
+        ✓ Auto-selected the only PO with available ${t.item} stock.
+      </div>
+      <div style="margin-top:8px;font-size:13px"><strong>PO:</strong> ${po.poNo} &mdash; ${po.make||'-'} &mdash; ${po.balance} in stock</div>
+      <input type="hidden" id="disp_po" value="${po.poNo}" />
+    `;
+  } else {
+    poInputHtml = `
+      <label>Issue from PO <span class="req">*</span></label>
+      <select id="disp_po" required style="width:100%;padding:8px;font-size:14px;border:1px solid var(--border);border-radius:4px">
+        <option value="">-- Select PO --</option>
+        ${eligible.map(p => `<option value="${p.poNo}">${p.poNo} &mdash; ${p.make||p.item} &mdash; ${p.balance} in stock</option>`).join("")}
+      </select>
+      <div class="helper">${eligible.length} POs have enough ${t.item} stock for this dispatch.</div>
+    `;
+  }
+
+  document.getElementById("modalTitle").textContent = `Dispatch ${t.id}`;
+  document.getElementById("modalBody").innerHTML = `
+    <div class="section-title">Dispatching</div>
+    <div class="detail-grid">
+      <div class="detail-item"><div class="k">Ticket</div><div class="v">${t.id}</div></div>
+      <div class="detail-item"><div class="k">Outlet</div><div class="v">${t.outletCode}</div></div>
+      <div class="detail-item"><div class="k">Item</div><div class="v">${t.item} &times; ${t.qty}</div></div>
+      <div class="detail-item"><div class="k">Reason</div><div class="v">${t.reason}</div></div>
+    </div>
+
+    <div class="section-title">Stock Source (PO)</div>
+    ${poInputHtml}
+
+    <div class="section-title" style="margin-top:18px">Dispatch Reference</div>
+    <label>DC Number <span class="req">*</span></label>
+    <input type="text" id="disp_dc" required value="${defaultDc}" style="width:100%;padding:8px;font-size:14px;border:1px solid var(--border);border-radius:4px" />
+    <div class="helper">Delivery Challan number — must be filled before dispatch.</div>
+  `;
+
+  document.getElementById("modalFoot").innerHTML = `
+    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-primary" onclick="confirmDispatch('${ticketId}')">📦 Confirm Dispatch</button>
+  `;
+  document.getElementById("modalBg").classList.add("show");
+}
+
+async function confirmDispatch(ticketId){
+  const dcNo = (document.getElementById("disp_dc").value||'').trim();
+  const poNo = (document.getElementById("disp_po").value||'').trim();
+  const skipPO = document.getElementById("disp_skip");
+  if(!dcNo){toast("DC Number required","Enter the Delivery Challan number","error");return}
+  // If no PO available and "dispatch anyway" not ticked, refuse
+  const t = tickets.find(x=>x.id===ticketId);
+  const eligible = stock.filter(s => s.item === t.item && s.balance >= t.qty);
+  if(eligible.length === 0 && !(skipPO && skipPO.checked)){
+    toast("No PO selected","Tick 'Dispatch anyway' if you really want to issue without tracking against a PO","warn");
+    return;
+  }
+  if(eligible.length > 0 && !poNo){
+    toast("Pick a PO","Select which PO this dispatch is from","error");
+    return;
+  }
   closeModal();
-  if(await cloudTransition('dispatchTicket', id, {dcNo})) toast(`Ticket ${id} dispatched`, `DC ${dcNo}`, "success");
-};
+  const ok = await cloudTransition('dispatchTicket', ticketId, {dcNo, poNo});
+  if(ok){
+    // Decrement local stock optimistically (server already validated)
+    if(poNo){
+      const po = stock.find(s=>s.poNo===poNo);
+      if(po){ po.qtyIssued += t.qty; po.balance -= t.qty; }
+    }
+    toast(`Ticket ${ticketId} dispatched`, poNo?`DC ${dcNo} · PO ${poNo}`:`DC ${dcNo}`, "success");
+  }
+}
 
 const _localComplete = completeTicket;
 completeTicket = async function(id){
@@ -2177,12 +2468,14 @@ window.alert = function(msg){
    ENGINEER DASHBOARD
    ===================================================== */
 function renderEngineerDashboard(){
+  const thisMonthKey = _currentMonthKey();
+  const thisMonthLabel = _currentMonthLabel();
   const fn = currentUser?.name?.split(" ")[0]||"";
-  const mine = tickets.filter(t=>t.raisedBy.startsWith(fn));
+  const mine = tickets.filter(t=>t.raisedBy && t.raisedBy.startsWith(fn));
   const pending = mine.filter(t=>t.status==="Pending").length;
   const approved = mine.filter(t=>["Approved","Dispatched"].includes(t.status)).length;
   const completed = mine.filter(t=>t.status==="Completed").length;
-  const thisMonth = mine.filter(t=>t.raisedOn.startsWith("2026-04")).length;
+  const thisMonth = mine.filter(t=>t.raisedOn && t.raisedOn.startsWith(thisMonthKey)).length;
   const recent = mine.slice(0,5);
 
   document.getElementById("main").innerHTML = `
@@ -2198,7 +2491,7 @@ function renderEngineerDashboard(){
       <div class="stat-card amber"><div class="label">My Pending</div><div class="val">${pending}</div><div class="delta">Awaiting officer approval</div></div>
       <div class="stat-card blue"><div class="label">In Progress</div><div class="val">${approved}</div><div class="delta">Approved / dispatched</div></div>
       <div class="stat-card green"><div class="label">Completed</div><div class="val">${completed}</div><div class="delta">Installation confirmed</div></div>
-      <div class="stat-card"><div class="label">Raised This Month</div><div class="val">${thisMonth}</div><div class="delta">April 2026</div></div>
+      <div class="stat-card"><div class="label">Raised This Month</div><div class="val">${thisMonth}</div><div class="delta">${thisMonthLabel}</div></div>
     </div>
 
     <div class="card">
@@ -2227,11 +2520,21 @@ function renderEngineerDashboard(){
    WAREHOUSE DASHBOARD
    ===================================================== */
 function renderWarehouseDashboard(){
+  const thisMonthKey = _currentMonthKey();
+  const thisMonthLabel = _currentMonthLabel();
   const toDispatch = tickets.filter(t=>t.status==="Approved").length;
-  const dispatchedThisMonth = tickets.filter(t=>t.status==="Dispatched" && t.dispatchedOn?.startsWith("2026-04")).length;
-  const completed = tickets.filter(t=>t.status==="Completed").length;
-  const hoseIssued = tickets.filter(t=>["Dispatched","Completed"].includes(t.status) && t.item==="Hose").reduce((s,t)=>s+t.qty,0);
-  const nozzleIssued = tickets.filter(t=>["Dispatched","Completed"].includes(t.status) && t.item==="Nozzle").reduce((s,t)=>s+t.qty,0);
+  // Items dispatched in the current month — count both Dispatched and Completed (since a Completed ticket was dispatched first)
+  const dispatchedThisMonth = tickets.filter(t=>
+    ["Dispatched","Completed"].includes(t.status) &&
+    t.dispatchedOn && t.dispatchedOn.startsWith(thisMonthKey)
+  ).length;
+  const hoseIssued   = tickets.filter(t=>["Dispatched","Completed"].includes(t.status) && t.item==="Hose").reduce((s,t)=>s+(t.qty||0),0);
+  const nozzleIssued = tickets.filter(t=>["Dispatched","Completed"].includes(t.status) && t.item==="Nozzle").reduce((s,t)=>s+(t.qty||0),0);
+  // Stock on hand (if loaded)
+  const hosesInStock   = stock.filter(s=>s.item==="Hose").reduce((s,p)=>s+(p.balance||0),0);
+  const nozzlesInStock = stock.filter(s=>s.item==="Nozzle").reduce((s,p)=>s+(p.balance||0),0);
+  const lowStockHose   = hosesInStock < 5;
+  const lowStockNozzle = nozzlesInStock < 5;
 
   document.getElementById("main").innerHTML = `
     <div class="page-header">
@@ -2244,10 +2547,17 @@ function renderWarehouseDashboard(){
 
     <div class="stat-grid">
       <div class="stat-card amber"><div class="label">Ready to Dispatch</div><div class="val">${toDispatch}</div><div class="delta">Approved, pending warehouse action</div></div>
-      <div class="stat-card green"><div class="label">Dispatched (April)</div><div class="val">${dispatchedThisMonth}</div><div class="delta">This month</div></div>
-      <div class="stat-card blue"><div class="label">Total Hoses Issued</div><div class="val">${hoseIssued}</div><div class="delta">All-time from this warehouse</div></div>
-      <div class="stat-card blue"><div class="label">Total Nozzles Issued</div><div class="val">${nozzleIssued}</div><div class="delta">All-time from this warehouse</div></div>
+      <div class="stat-card green"><div class="label">Dispatched This Month</div><div class="val">${dispatchedThisMonth}</div><div class="delta">${thisMonthLabel}</div></div>
+      <div class="stat-card blue"><div class="label">Hoses in Stock</div><div class="val">${hosesInStock}</div><div class="delta">${lowStockHose?"⚠ Low stock — receive new PO":"Available across active POs"}</div></div>
+      <div class="stat-card blue"><div class="label">Nozzles in Stock</div><div class="val">${nozzlesInStock}</div><div class="delta">${lowStockNozzle?"⚠ Low stock — receive new PO":"Available across active POs"}</div></div>
     </div>
+
+    <div class="stat-grid" style="margin-top:14px">
+      <div class="stat-card"><div class="label">Total Hoses Issued (All-Time)</div><div class="val">${hoseIssued}</div><div class="delta">From this warehouse</div></div>
+      <div class="stat-card"><div class="label">Total Nozzles Issued (All-Time)</div><div class="val">${nozzleIssued}</div><div class="delta">From this warehouse</div></div>
+    </div>
+
+    ${renderReplacementTrendCard()}
 
     <div class="card">
       <h3>Pending Dispatch</h3>
@@ -2428,6 +2738,208 @@ function deleteUser(id){
   saveState && saveState();
   toast("User removed", `'${id}' has been removed`, "success");
   go("manageusers");
+}
+
+/* =====================================================
+   STOCK INVENTORY (warehouse + officer)
+   ===================================================== */
+function renderStockInventory(){
+  const isWarehouse = currentRole === "warehouse";
+  const totalHoses   = stock.filter(s=>s.item==="Hose").reduce((s,p)=>s+(p.balance||0),0);
+  const totalNozzles = stock.filter(s=>s.item==="Nozzle").reduce((s,p)=>s+(p.balance||0),0);
+  const activePOs    = stock.filter(s=>s.balance>0).length;
+  const totalPOs     = stock.length;
+
+  document.getElementById("main").innerHTML = `
+    <div class="page-header">
+      <div><h1>Stock Inventory</h1><div class="sub">Hoses and nozzles received against PO &mdash; live balance per PO</div></div>
+      ${isWarehouse?`<button class="btn btn-primary" onclick="go('receivestock')">＋ Receive New PO</button>`:''}
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card blue"><div class="label">Hoses on Hand</div><div class="val">${totalHoses}</div><div class="delta">Across all active POs</div></div>
+      <div class="stat-card amber"><div class="label">Nozzles on Hand</div><div class="val">${totalNozzles}</div><div class="delta">Across all active POs</div></div>
+      <div class="stat-card green"><div class="label">Active POs</div><div class="val">${activePOs}</div><div class="delta">POs with remaining stock</div></div>
+      <div class="stat-card"><div class="label">Total POs Received</div><div class="val">${totalPOs}</div><div class="delta">All-time</div></div>
+    </div>
+
+    <div class="card">
+      <h3>Stock Position by PO</h3>
+      ${stock.length === 0 ? `
+        <div class="empty">
+          📦 No stock recorded yet.${isWarehouse ? ' Click <strong>Receive New PO</strong> above to enter your first PO.' : ' Ask the warehouse team to record an incoming PO.'}
+        </div>` : `
+        <div class="filter-bar">
+          <input type="text" id="stockSearch" placeholder="Search PO number, vendor, make…" oninput="_filterStock()" />
+          <select id="stockItemFilter" onchange="_filterStock()">
+            <option value="">All items</option>
+            <option>Hose</option><option>Nozzle</option>
+          </select>
+          <select id="stockBalFilter" onchange="_filterStock()">
+            <option value="">All POs</option>
+            <option value="active">In stock (balance &gt; 0)</option>
+            <option value="empty">Fully issued</option>
+          </select>
+        </div>
+        <div id="stockTableWrap">
+          ${renderStockTable(stock)}
+        </div>`}
+    </div>
+  `;
+}
+
+function renderStockTable(list){
+  if(!list.length) return `<div class="empty">No POs match the filter.</div>`;
+  return `
+    <table>
+      <thead>
+        <tr>
+          <th>PO Number</th><th>PO Date</th><th>Vendor</th>
+          <th>Item</th><th>Make / Model</th>
+          <th style="text-align:right">Received</th>
+          <th style="text-align:right">Issued</th>
+          <th style="text-align:right">Balance</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${list.map(p => {
+          const status = p.balance <= 0
+            ? '<span class="status s-completed">Fully Issued</span>'
+            : (p.balance < p.qtyReceived
+                ? '<span class="status s-dispatched">Partial</span>'
+                : '<span class="status s-approved">Available</span>');
+          return `<tr>
+            <td><strong>${p.poNo}</strong></td>
+            <td>${fmtDate(p.poDate)}</td>
+            <td>${p.vendor||'-'}</td>
+            <td>${p.item}</td>
+            <td>${[p.make, p.model].filter(Boolean).join(' / ') || '-'}</td>
+            <td style="text-align:right"><strong>${p.qtyReceived}</strong></td>
+            <td style="text-align:right">${p.qtyIssued}</td>
+            <td style="text-align:right;font-weight:600;color:${p.balance>0?'var(--green)':'var(--muted)'}">${p.balance}</td>
+            <td>${status}</td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function _filterStock(){
+  const q = (document.getElementById("stockSearch").value||'').toLowerCase();
+  const it = document.getElementById("stockItemFilter").value;
+  const bf = document.getElementById("stockBalFilter").value;
+  const filtered = stock.filter(p => {
+    const hay = (p.poNo+' '+p.vendor+' '+p.make+' '+p.model+' '+p.item).toLowerCase();
+    if(q && !hay.includes(q)) return false;
+    if(it && p.item !== it) return false;
+    if(bf === 'active' && p.balance <= 0) return false;
+    if(bf === 'empty' && p.balance > 0) return false;
+    return true;
+  });
+  document.getElementById("stockTableWrap").innerHTML = renderStockTable(filtered);
+}
+
+/* =====================================================
+   RECEIVE STOCK (warehouse only)
+   ===================================================== */
+function renderReceiveStock(){
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById("main").innerHTML = `
+    <div class="page-header">
+      <div><h1>Receive Stock against PO</h1><div class="sub">Record incoming hoses or nozzles received from procurement</div></div>
+      <button class="btn btn-secondary" onclick="go('stockview')">📦 View Stock Inventory</button>
+    </div>
+    <div class="card">
+      <form id="poForm" onsubmit="receiveStock(event)">
+        <div class="section-title">PO Details</div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>PO Number <span class="req">*</span></label>
+            <input type="text" id="po_no" required placeholder="e.g. PO/BPCL/2026/0123" />
+            <div class="helper">Must be unique per item type. A PO with both hoses and nozzles needs two entries.</div>
+          </div>
+          <div class="form-row">
+            <label>PO Date <span class="req">*</span></label>
+            <input type="date" id="po_date" value="${today}" required />
+          </div>
+          <div class="form-row">
+            <label>Vendor</label>
+            <input type="text" id="po_vendor" placeholder="e.g. Gates India Pvt Ltd" />
+          </div>
+        </div>
+
+        <div class="section-title">Item Received</div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Item Type <span class="req">*</span></label>
+            <select required id="po_item">
+              <option value="">-- Select --</option>
+              <option>Hose</option>
+              <option>Nozzle</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Make / Brand</label>
+            <input type="text" id="po_make" placeholder="e.g. Gates, OPW, Husky" />
+          </div>
+          <div class="form-row">
+            <label>Model</label>
+            <input type="text" id="po_model" placeholder="e.g. H7434" />
+          </div>
+          <div class="form-row">
+            <label>Quantity Received <span class="req">*</span></label>
+            <input type="number" id="po_qty" min="1" value="10" required />
+          </div>
+          <div class="form-row full">
+            <label>Notes</label>
+            <textarea id="po_notes" placeholder="Invoice number, batch / serial range, condition on receipt, etc."></textarea>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:18px">
+          <button type="submit" class="btn btn-primary">Save PO Receipt</button>
+          <button type="button" class="btn btn-secondary" onclick="go('stockview')">Cancel</button>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
+async function receiveStock(e){
+  e.preventDefault();
+  const poNo = document.getElementById("po_no").value.trim();
+  const poDate = document.getElementById("po_date").value;
+  const vendor = document.getElementById("po_vendor").value.trim();
+  const item = document.getElementById("po_item").value;
+  const make = document.getElementById("po_make").value.trim();
+  const model = document.getElementById("po_model").value.trim();
+  const qty = parseInt(document.getElementById("po_qty").value);
+  const notes = document.getElementById("po_notes").value.trim();
+  if(!poNo || !item || !qty){toast("Missing data","PO Number, Item and Quantity are required","error");return}
+  if(qty < 1){toast("Invalid quantity","Quantity must be at least 1","error");return}
+
+  setSyncStatus('busy');
+  try{
+    await apiCall('receiveStock', {
+      poNo, poDate, vendor, item, make, model, qty, notes,
+      actorName: currentUser?.name||''
+    });
+    // Optimistic local add
+    stock.unshift({
+      poNo, poDate, vendor, item, make, model,
+      qtyReceived: qty, qtyIssued: 0, balance: qty,
+      notes, receivedOn: new Date().toISOString(),
+      receivedBy: currentUser?.name||''
+    });
+    setSyncStatus('ok');
+    toast(`PO ${poNo} recorded`, `${qty} ${item}(s) added to stock`, "success");
+    go("stockview");
+  }catch(ex){
+    setSyncStatus('err');
+    toast("Save failed", ex.message, "error");
+  }
 }
 
 /* =====================================================
