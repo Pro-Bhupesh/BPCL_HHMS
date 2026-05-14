@@ -2,8 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>BPCL Hose &amp; Nozzle Replacement Tracker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#00205B" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="HHMS" />
+<meta name="mobile-web-app-capable" content="yes" />
+<!-- Inline manifest so the file works as a PWA when served over HTTPS -->
+<link rel="manifest" href='data:application/manifest+json;utf8,{"name":"HHMS — BPCL Tracker","short_name":"HHMS","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300205B","icons":[{"src":"data:image/svg%2bxml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 220%22%3E%3Cpolygon points=%22100,8 188,52 188,168 100,212 12,168 12,52%22 fill=%22%2300205B%22 stroke=%22%23FDB913%22 stroke-width=%226%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}' />
+<title>HHMS — Hose &amp; Nozzle Replacement Tracker</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2300205B'/%3E%3Ccircle cx='32' cy='24' r='8' fill='%23FDB913'/%3E%3Ctext x='32' y='52' font-family='Arial,sans-serif' font-size='14' font-weight='900' fill='white' text-anchor='middle'%3EBPCL%3C/text%3E%3C/svg%3E" />
 <style>
   :root{
@@ -502,18 +509,67 @@
     .status{border:1px solid #333}
   }
 
+  /* ─── Mobile / tablet (≤768px) ─────────────────────────────────── */
   @media (max-width:768px){
     .form-grid{grid-template-columns:1fr}
     .form-row.full{grid-column:span 1}
     .settings-grid{grid-template-columns:1fr}
-    .sidebar{width:60px}
-    .nav-item span.nav-text,.nav-badge{display:none}
-    .nav-title{display:none}
+    .stat-grid{grid-template-columns:1fr 1fr;gap:10px}
+    .stat-card{padding:14px}
+    .stat-card .val{font-size:28px}
     .main{padding:16px}
     .brand-text .t2{display:none}
+    .brand-text .t1{font-size:13px}
+    .logo{font-size:13px;padding:5px 8px}
     .user-info .uname,.user-info .urole{display:none}
+    .user-info{padding:0}
+    .topbar{padding:8px 12px}
     #toastBox{right:10px;left:10px;max-width:none}
+    /* Sidebar slides in / out via the hamburger button (#hamburger) on mobile */
+    .sidebar{
+      position:fixed;top:56px;bottom:0;left:0;width:240px;z-index:99;
+      transform:translateX(-100%);transition:transform .25s ease;
+      box-shadow:2px 0 8px rgba(0,32,91,.18);
+    }
+    .sidebar.show{transform:translateX(0)}
+    /* Backdrop when sidebar is open */
+    .sidebar-backdrop{
+      display:none;position:fixed;top:56px;left:0;right:0;bottom:0;
+      background:rgba(0,32,91,.4);z-index:98;
+    }
+    .sidebar-backdrop.show{display:block}
+    /* Hamburger button — hidden on desktop, shown on mobile */
+    #hamburger{
+      display:inline-flex;align-items:center;justify-content:center;
+      background:rgba(255,255,255,.15);border:none;color:#fff;
+      width:36px;height:36px;border-radius:6px;font-size:20px;cursor:pointer;
+      margin-right:8px;
+    }
+    /* Big, finger-friendly touch targets everywhere */
+    .btn,.nav-item,select,input[type=text],input[type=password],
+    input[type=number],input[type=date],input[type=file]+label,textarea{
+      min-height:42px;font-size:15px;
+    }
+    .btn-sm{min-height:32px;font-size:13px}
+    /* Tables wrap in a horizontally scrollable container on mobile */
+    .card>table{display:block;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
+    .card>table thead,.card>table tbody{display:table;width:100%;table-layout:auto}
+    /* Modal goes full-screen on phones */
+    .modal{max-width:100%;width:100%;border-radius:0;height:100%;max-height:100vh;display:flex;flex-direction:column}
+    .modal-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+    .modal-foot{flex-wrap:wrap}
+    .modal-foot .btn{flex:1;min-width:120px}
+    /* Login card readability */
+    .login-card{padding:20px;margin:10px}
   }
+  #hamburger{display:none}    /* hidden on desktop by default */
+  @media (max-width:480px){
+    .stat-grid{grid-template-columns:1fr}
+    .page-header{flex-direction:column;align-items:flex-start;gap:10px}
+    .page-header button,.page-header .btn{width:100%}
+  }
+  /* Add to home screen meta — works as installable PWA when served over HTTPS */
+
 </style>
 </head>
 <body>
@@ -580,6 +636,7 @@
 
 <div class="topbar">
   <div class="brand">
+    <button id="hamburger" onclick="toggleSidebar()" aria-label="Open menu" title="Menu">☰</button>
     <div class="logo">BPCL</div>
     <div class="brand-text">
       <div class="t1">Bharat Petroleum &mdash; Hose &amp; Nozzle Replacement Tracker</div>
@@ -604,6 +661,7 @@
 <div class="shell">
   <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar"></aside>
+  <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar(false)"></div>
 
   <!-- MAIN CONTENT -->
   <main class="main" id="main"></main>
@@ -767,9 +825,13 @@ const navConfig = {
     {title:"MAIN"},
     {id:"dashboard",icon:"▣",label:"Dashboard"},
     {id:"raise",icon:"＋",label:"Raise New Ticket"},
+    {id:"pendinginstall",icon:"🔧",label:"Pending Installation",badgeRed:true,badge:()=>{
+      const fn = currentUser?.name?.split(" ")[0]||"";
+      return tickets.filter(t=>t.status==="Dispatched" && t.raisedBy && t.raisedBy.startsWith(fn)).length;
+    }},
     {id:"mytickets",icon:"📋",label:"My Tickets",badge:()=>{
       const fn = currentUser?.name?.split(" ")[0]||"";
-      return tickets.filter(t=>t.raisedBy.startsWith(fn)).length;
+      return tickets.filter(t=>t.raisedBy && t.raisedBy.startsWith(fn)).length;
     }},
     {id:"history",icon:"📜",label:"Outlet History"},
     {title:"ACCOUNT"},
@@ -816,6 +878,16 @@ function go(page){
   renderSidebar();
   renderMain();
   window.scrollTo(0,0);
+  // Auto-close mobile sidebar after navigation
+  toggleSidebar(false);
+}
+
+function toggleSidebar(force){
+  const sb = document.getElementById('sidebar');
+  const bd = document.getElementById('sidebarBackdrop');
+  const open = (force === undefined) ? !sb.classList.contains('show') : force;
+  sb.classList.toggle('show', open);
+  bd.classList.toggle('show', open);
 }
 
 function switchRole(r){
@@ -890,6 +962,7 @@ function renderMain(){
     "officer:settings":renderSettings,
     "engineer:dashboard":renderEngineerDashboard,
     "engineer:raise":renderRaiseTicket,
+    "engineer:pendinginstall":renderPendingInstall,
     "engineer:mytickets":renderMyTickets,
     "engineer:history":renderOutletHistory,
     "engineer:settings":renderSettings,
@@ -1081,6 +1154,7 @@ function renderAllTickets(){
   document.getElementById("main").innerHTML = `
     <div class="page-header">
       <div><h1>All Tickets</h1><div class="sub">Complete record of all replacement requests</div></div>
+      <button class="btn btn-secondary" onclick="exportTicketsCsv(null,'AllTickets')">⬇ Export CSV</button>
     </div>
     <div class="filter-bar">
       <input type="text" id="searchBox" placeholder="Search ticket ID, outlet code, item…" oninput="filterTickets()" />
@@ -1175,7 +1249,10 @@ function showOutletHistory(code){
       </div>
     </div>
     <div class="card">
-      <h3>Replacement History</h3>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <h3 style="margin:0">Replacement History</h3>
+        <button class="btn btn-secondary btn-sm" onclick="exportOutletHistoryCsv('${code}')">⬇ Export CSV</button>
+      </div>
       ${renderTicketTable(history,true)}
     </div>
   `;
@@ -1190,9 +1267,11 @@ function renderFrequency(){
     return {code,name:o.name||"",city:o.city||"",count:counts[code]};
   }).sort((a,b)=>b.count-a.count);
 
+  window._freqRows = rows; // stash for the CSV export
   document.getElementById("main").innerHTML = `
     <div class="page-header">
       <div><h1>Frequency Analysis</h1><div class="sub">Outlets sorted by replacement frequency &mdash; flag anomalies</div></div>
+      <button class="btn btn-secondary" onclick="exportFrequencyCsv(window._freqRows||[])">⬇ Export CSV</button>
     </div>
     <div class="alert">⚠ Outlets with &ge; 3 replacements in the period may indicate misuse, theft, or a quality issue worth investigating.</div>
     <div class="card">
@@ -1605,6 +1684,57 @@ function triggerDownload(text, filename){
   URL.revokeObjectURL(url);
 }
 
+/* ---------- Generic CSV exporters used by the Reports buttons ---------- */
+function _csvCell(v){
+  if(v===null||v===undefined) return "";
+  const s = String(v);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+}
+function _toCsv(headers, rows){
+  return [headers.join(","), ...rows.map(r=>r.map(_csvCell).join(","))].join("\n");
+}
+function _stamp(){ return new Date().toISOString().split('T')[0]; }
+function _territoryHeader(title){
+  const ter = currentUser?.territory || "All Territories";
+  return [
+    `BPCL HHMS — ${title}`,
+    `Territory: ${ter}`,
+    `Generated: ${new Date().toLocaleString("en-IN")} by ${currentUser?.name||""}`,
+    ""
+  ].join("\n");
+}
+
+function exportTicketsCsv(list, filenamePrefix){
+  list = list || tickets;
+  const headers = ["Ticket ID","Outlet Code","Item","Model","Part No","Qty","Reason","Status","Raised By","Raised On","Approved By","Approved On","Dispatched On","DC Number","PO Number","Installed On","Photo Count"];
+  const rows = list.map(t=>[t.id, t.outletCode, t.item, t.model||"", t.partNo||"", t.qty, t.reason, t.status, t.raisedBy, t.raisedOn, t.approvedBy||"", t.approvedOn||"", t.dispatchedOn||"", t.dcNo||"", t.poNo||"", t.installedOn||"", t.photos||0]);
+  const csv = _territoryHeader("Tickets Export") + _toCsv(headers, rows);
+  triggerDownload(csv, `BPCL_HHMS_${filenamePrefix||'Tickets'}_${_stamp()}.csv`);
+  toast("Downloaded", `${list.length} ticket(s) exported`, "success");
+}
+
+function exportFrequencyCsv(rows){
+  const headers = ["Rank","Outlet Code","Outlet Name","Location","Total Replacements"];
+  const csvRows = rows.map((r,i)=>[i+1, r.code, r.name, r.city, r.count]);
+  const csv = _territoryHeader("Frequency Analysis") + _toCsv(headers, csvRows);
+  triggerDownload(csv, `BPCL_HHMS_Frequency_${_stamp()}.csv`);
+  toast("Downloaded", `${rows.length} outlets exported`, "success");
+}
+
+function exportStockCsv(){
+  const headers = ["PO Number","PO Date","Vendor","Item","Make","Model","Qty Received","Qty Issued","Balance","Notes","Received On","Received By"];
+  const rows = stock.map(s=>[s.poNo, s.poDate, s.vendor, s.item, s.make||"", s.model||"", s.qtyReceived, s.qtyIssued, s.balance, s.notes||"", s.receivedOn||"", s.receivedBy||""]);
+  const csv = _territoryHeader("Stock Inventory") + _toCsv(headers, rows);
+  triggerDownload(csv, `BPCL_HHMS_Stock_${_stamp()}.csv`);
+  toast("Downloaded", `${rows.length} PO record(s) exported`, "success");
+}
+
+function exportOutletHistoryCsv(code){
+  if(!code){toast("Pick an outlet","Select a Customer Code first","warn");return}
+  const list = tickets.filter(t=>t.outletCode===code);
+  exportTicketsCsv(list, `OutletHistory_${code}`);
+}
+
 /* ---------- ENGINEER: RAISE TICKET ---------- */
 function renderRaiseTicket(){
   currentPhotoCount = 0; // reset stale photo counter every time the form is opened
@@ -1773,14 +1903,156 @@ function submitTicket(e){
   go("mytickets");
 }
 
+/* ---------- ENGINEER: PENDING INSTALLATION ----------
+   After warehouse dispatches, the ticket lands here for the MST who
+   raised it. They visit the outlet, install the new hose/nozzle, and
+   close the ticket with an installation photograph.
+   ---------------------------------------------------- */
+function renderPendingInstall(){
+  const fn = currentUser?.name?.split(" ")[0]||"";
+  const mine = tickets.filter(t=>t.status==="Dispatched" && t.raisedBy && t.raisedBy.startsWith(fn));
+  window._pendingInstallExport = mine;
+
+  document.getElementById("main").innerHTML = `
+    <div class="page-header">
+      <div>
+        <h1>Pending Installation</h1>
+        <div class="sub">${mine.length} dispatched ticket(s) waiting for installation &amp; close</div>
+      </div>
+      ${mine.length?`<button class="btn btn-secondary" onclick="exportTicketsCsv(window._pendingInstallExport,'PendingInstall')">⬇ Export CSV</button>`:''}
+    </div>
+    <div class="alert">
+      <strong>Workflow reminder:</strong> Travel to the outlet, install the dispatched item, take a clear installation photo, then click <em>View → Confirm Installation</em> on the ticket below to close it.
+    </div>
+    <div class="card">
+      ${mine.length
+        ? renderTicketTable(mine, true)
+        : "<div class='empty'>✓ No pending installations. All dispatched items are already installed.</div>"}
+    </div>
+  `;
+}
+
+/* ---------- INSTALL MODAL (replaces the bare completeTicket prompt) ---------- */
+let _installPhotoCount = 0;
+function openInstallModal(ticketId){
+  const t = tickets.find(x=>x.id===ticketId);
+  if(!t){toast("Ticket not found",ticketId,"error");return}
+  _installPhotoCount = 0;
+  const today = new Date().toISOString().split('T')[0];
+
+  document.getElementById("modalTitle").textContent = `Confirm Installation — ${t.id}`;
+  document.getElementById("modalBody").innerHTML = `
+    <div class="section-title">Installation Details</div>
+    <div class="detail-grid">
+      <div class="detail-item"><div class="k">Ticket</div><div class="v">${t.id}</div></div>
+      <div class="detail-item"><div class="k">Outlet</div><div class="v">${t.outletCode}</div></div>
+      <div class="detail-item"><div class="k">Item</div><div class="v">${t.item} &times; ${t.qty}</div></div>
+      <div class="detail-item"><div class="k">DC Number</div><div class="v">${t.dcNo||'-'}</div></div>
+    </div>
+
+    <div class="section-title">Installation Date</div>
+    <input type="date" id="install_date" value="${today}" required style="width:100%;padding:10px;font-size:14px;border:1px solid var(--border);border-radius:4px" />
+
+    <div class="section-title">Installation Photo <span class="req">*</span></div>
+    <div class="photo-drop" onclick="document.getElementById('installFileInp').click()">
+      📷 Click to upload installation photo (max 3) — clear photo of the new item installed at the outlet
+    </div>
+    <input type="file" id="installFileInp" multiple accept="image/*" style="display:none" onchange="handleInstallFiles(this.files)" />
+    <div class="photo-preview" id="installPhotoPreview"></div>
+    <div class="helper">Installation photo is required. It becomes part of the permanent record.</div>
+
+    <div class="section-title">Notes (optional)</div>
+    <textarea id="install_notes" placeholder="e.g. Old item handed over to dealer, new item working correctly, dealer confirmation taken" style="width:100%;min-height:60px;padding:8px;font-size:13px;border:1px solid var(--border);border-radius:4px"></textarea>
+  `;
+
+  document.getElementById("modalFoot").innerHTML = `
+    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-success" onclick="submitInstall('${ticketId}')">✓ Confirm &amp; Close Ticket</button>
+  `;
+  document.getElementById("modalBg").classList.add("show");
+}
+
+function handleInstallFiles(files){
+  const prev = document.getElementById("installPhotoPreview");
+  [...files].slice(0,3-_installPhotoCount).forEach(f=>{
+    const reader = new FileReader();
+    reader.onload = e=>{
+      const div = document.createElement("div");
+      div.className = "photo-thumb";
+      div.innerHTML = `<img src="${e.target.result}"/><button type="button" class="rm" onclick="this.parentElement.remove();_installPhotoCount--">×</button>`;
+      prev.appendChild(div);
+      _installPhotoCount++;
+    };
+    reader.readAsDataURL(f);
+  });
+}
+
+async function submitInstall(ticketId){
+  const photoEls = [...document.querySelectorAll("#installPhotoPreview .photo-thumb img")];
+  if(photoEls.length < 1){
+    toast("Photo required","Upload at least 1 installation photo before closing the ticket","error");
+    return;
+  }
+  const installDate = document.getElementById("install_date").value || new Date().toISOString().split('T')[0];
+  const notes = document.getElementById("install_notes").value.trim();
+  closeModal();
+  setSyncStatus('busy');
+  toast("Closing ticket…", `Uploading ${photoEls.length} installation photo(s)…`, "info");
+
+  try{
+    // Parallel photo uploads to Drive
+    const stamp = Date.now();
+    const installPhotoUrls = (await Promise.all(
+      photoEls.map((el, i) => apiCall('uploadPhoto', {
+        dataUrl: el.src,
+        filename: `install_${ticketId}_${stamp}_${i+1}`
+      }).then(r => r.url).catch(() => null))
+    )).filter(Boolean);
+
+    // Call completeTicket with install photos
+    const r = await apiCall('completeTicket', {
+      ticketId,
+      actorName: currentUser?.name||'',
+      installPhotoUrls,
+      installedOn: installDate,
+      notes
+    });
+
+    if(r.ok){
+      // Optimistic local update
+      const t = tickets.find(x=>x.id===ticketId);
+      if(t){
+        t.status = "Completed";
+        t.installPhotoUrls = installPhotoUrls;
+        t.installedOn = installDate;
+        const dispTime = new Date().toLocaleString("en-IN",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+        t.timeline = (t.timeline||[]).concat([{
+          t: `Installation confirmed by ${currentUser?.name||''}${notes?' — '+notes:''} (${installPhotoUrls.length} install photo${installPhotoUrls.length===1?'':'s'} attached)`,
+          d: dispTime
+        }]);
+      }
+      setSyncStatus('ok');
+      toast(`Ticket ${ticketId} closed`, "Installation confirmed and recorded", "success");
+      go("pendinginstall");
+    }
+  }catch(ex){
+    setSyncStatus('err');
+    toast("Close failed", ex.message, "error");
+  }
+}
+
 /* ---------- ENGINEER: MY TICKETS ---------- */
 function renderMyTickets(){
   const fname = currentUser?.name?.split(" ")[0] || "";
-  const mine = tickets.filter(t=>t.raisedBy.startsWith(fname));
+  const mine = tickets.filter(t=>t.raisedBy && t.raisedBy.startsWith(fname));
+  window._myTicketsExport = mine;   // stash for the export button
   document.getElementById("main").innerHTML = `
     <div class="page-header">
       <div><h1>My Tickets</h1><div class="sub">All tickets raised by you &mdash; ${currentUser?.name||"MST"}</div></div>
-      <button class="btn btn-primary" onclick="go('raise')">＋ Raise New Ticket</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${mine.length?`<button class="btn btn-secondary" onclick="exportTicketsCsv(window._myTicketsExport,'MyTickets')">⬇ Export CSV</button>`:''}
+        <button class="btn btn-primary" onclick="go('raise')">＋ Raise New Ticket</button>
+      </div>
     </div>
     <div class="card">${mine.length?renderTicketTable(mine,true):"<div class='empty'>You haven't raised any tickets yet. Click 'Raise New Ticket' to start.</div>"}</div>
   `;
@@ -1803,11 +2075,13 @@ function renderDispatchQueue(){
 /* ---------- WAREHOUSE: DISPATCHED ---------- */
 function renderDispatched(){
   const list = tickets.filter(t=>t.status==="Dispatched" || t.status==="Completed");
+  window._dispatchedExport = list;
   document.getElementById("main").innerHTML = `
     <div class="page-header">
       <div><h1>Dispatched Items</h1><div class="sub">Past dispatches from this warehouse</div></div>
+      ${list.length?`<button class="btn btn-secondary" onclick="exportTicketsCsv(window._dispatchedExport,'Dispatched')">⬇ Export CSV</button>`:''}
     </div>
-    <div class="card">${renderTicketTable(list,true)}</div>
+    <div class="card">${list.length?renderTicketTable(list,true):"<div class='empty'>No dispatched items yet.</div>"}</div>
   `;
 }
 
@@ -1915,6 +2189,28 @@ function viewTicket(id){
     <div class="detail-grid">
       <div class="detail-item"><div class="k">DC Number</div><div class="v">${t.dcNo||"-"}</div></div>
       <div class="detail-item"><div class="k">PO Number</div><div class="v">${t.poNo||"-"}</div></div>
+    </div>` : ''}
+
+    ${(t.installPhotoUrls && t.installPhotoUrls.length) ? `
+    <div class="section-title">Installation Evidence</div>
+    <div class="detail-grid full">
+      <div class="detail-item">
+        <div class="k">Installed On</div><div class="v">${t.installedOn?fmtDate(t.installedOn):'-'}</div>
+      </div>
+      <div class="detail-item">
+        <div class="k">Install Photos</div>
+        <div class="v">
+          ${t.installPhotoUrls.length} photo(s) attached at installation
+          <div class="photo-preview" style="margin-top:6px">
+            ${t.installPhotoUrls.map(u => {
+              const src = _driveImgSrc(u);
+              return `<a href="${u}" target="_blank" rel="noopener" title="Open in Google Drive" style="text-decoration:none">
+                <div class="photo-thumb"><img src="${src}" alt="Install photo" referrerpolicy="no-referrer" onerror="this.style.display='none';this.parentElement.innerHTML='&#128247; Install';this.parentElement.style.fontSize='10px';this.parentElement.style.color='var(--muted)'" /></div>
+              </a>`;
+            }).join("")}
+          </div>
+        </div>
+      </div>
     </div>` : ''}
 
     <div class="section-title">Timeline</div>
@@ -2328,8 +2624,9 @@ async function confirmDispatch(ticketId){
 const _localComplete = completeTicket;
 completeTicket = async function(id){
   if(!cloudMode) return _localComplete(id);
-  closeModal();
-  if(await cloudTransition('completeTicket', id, {})) toast(`Ticket ${id} completed`, "Installation confirmed", "success");
+  // The MST closes the ticket via a dedicated modal that captures the
+  // installation photo. The bare cloudTransition path is no longer used here.
+  openInstallModal(id);
 };
 
 /* ----- Override: SUBMIT NEW TICKET (parallel uploads, no full refetch) ----- */
@@ -2873,7 +3170,10 @@ function renderStockInventory(){
   document.getElementById("main").innerHTML = `
     <div class="page-header">
       <div><h1>Stock Inventory</h1><div class="sub">Hoses and nozzles received against PO &mdash; live balance per PO</div></div>
-      ${isWarehouse?`<button class="btn btn-primary" onclick="go('receivestock')">＋ Receive New PO</button>`:''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${stock.length?`<button class="btn btn-secondary" onclick="exportStockCsv()">⬇ Export CSV</button>`:''}
+        ${isWarehouse?`<button class="btn btn-primary" onclick="go('receivestock')">＋ Receive New PO</button>`:''}
+      </div>
     </div>
 
     <div class="stat-grid">
