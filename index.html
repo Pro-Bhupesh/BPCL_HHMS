@@ -262,6 +262,18 @@
     position:absolute;bottom:-22px;left:0;right:0;text-align:center;font-size:10px;
     color:var(--muted);
   }
+  /* Stacked bar — segments fill bottom-to-top in order Approved (green) → Rejected (red) → Pending (yellow) */
+  .bar-chart .bar.stacked{
+    background:none;display:flex;flex-direction:column-reverse;overflow:visible;
+  }
+  .bar-chart .bar.stacked .seg{display:block;width:100%}
+  .bar-chart .bar.stacked .seg-approved{background:linear-gradient(180deg,#22c55e,var(--green))}
+  .bar-chart .bar.stacked .seg-rejected{background:linear-gradient(180deg,#ef4444,var(--red))}
+  .bar-chart .bar.stacked .seg-pending {background:linear-gradient(180deg,var(--bpcl-yellow),var(--bpcl-yellow-2))}
+  .bar-chart .bar.stacked .seg:first-of-type{border-radius:0 0 0 0}
+  .bar-chart .bar.stacked .seg:last-of-type {border-radius:4px 4px 0 0}
+  .chart-legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--text);margin-bottom:6px}
+  .chart-legend .sw{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:middle}
 
   .hidden{display:none !important}
   .empty{text-align:center;padding:40px;color:var(--muted)}
@@ -664,9 +676,15 @@ function setApiToken(t){
 
 async function loadAllFromCloud(){
   const calls = [apiCall('getTickets'), apiCall('getOutlets')];
-  // Officers also fetch the user list for the Enroll Users page
+  // Officers also fetch the user list for the Enroll Users page.
+  // We surface the error (toast + console) instead of silently swallowing it,
+  // so a missing endpoint or permission issue is visible.
   if(currentUser && currentUser.role==='officer'){
-    calls.push(apiCall('getUsers').catch(()=>({users:null})));
+    calls.push(apiCall('getUsers').catch(err => {
+      console.error('getUsers failed:', err.message);
+      toast('User list unavailable', err.message, 'warn');
+      return {users:null};
+    }));
   } else {
     calls.push(Promise.resolve({users:null}));
   }
@@ -682,7 +700,16 @@ async function loadAllFromCloud(){
   if(uRes && uRes.users){
     users = {};
     uRes.users.forEach(u => {
-      users[u.id] = {pwd:"••••••", name:u.name, role:u.role, roleLabel:u.roleLabel, territory:u.territory};
+      // Normalize role string so the Enroll Users page renders correctly even
+      // if the Sheet has 'Engineer' or 'MST' instead of the canonical value.
+      const normalized = _normalizeRole(u.role);
+      users[u.id] = {
+        pwd:"••••••",
+        name:u.name,
+        role: normalized || u.role,
+        roleLabel: u.roleLabel || normalized,
+        territory: u.territory
+      };
     });
   }
   if(sRes && sRes.stock) stock = sRes.stock;
@@ -874,7 +901,35 @@ function renderMain(){
     "warehouse:stockview":renderStockInventory,
     "warehouse:settings":renderSettings
   };
-  (renderers[key] || (()=>{m.innerHTML="<div class='empty'>Page not found</div>"}))();
+  (renderers[key] || (()=>{
+    // More helpful fallback than "Page not found" — usually means the user's role
+    // doesn't match one of the three canonical values (officer/engineer/warehouse).
+    const validRoles = ["officer","engineer","warehouse"];
+    if(!validRoles.includes(String(currentRole||'').toLowerCase())){
+      m.innerHTML = `
+        <div class="page-header"><div><h1>Role not recognized</h1></div></div>
+        <div class="card">
+          <h3>⚠ Your account role isn't set correctly</h3>
+          <p>Your user record shows role <code style="background:#f0f4fa;padding:2px 8px;border-radius:4px">${currentRole||'(empty)'}</code>, but the app only understands these role values:</p>
+          <ul>
+            <li><code>officer</code> — Engineering Officer (approves tickets)</li>
+            <li><code>engineer</code> — MST / Field Engineer (raises tickets)</li>
+            <li><code>warehouse</code> — Warehouse / Stores (dispatches stock)</li>
+          </ul>
+          <p>Ask an Engineering Officer to fix this from <strong>Enroll Users</strong> by editing your account and picking one of the three roles above, then log in again.</p>
+          <button class="btn btn-primary" onclick="logout()" style="margin-top:10px">Logout</button>
+        </div>
+      `;
+    } else {
+      m.innerHTML = `
+        <div class="page-header"><div><h1>Page not available</h1></div></div>
+        <div class="card">
+          <h3>The page <code>${currentPage||'(empty)'}</code> isn't available for the <code>${currentRole}</code> role.</h3>
+          <p>Pick another option from the sidebar.</p>
+        </div>
+      `;
+    }
+  }))();
 }
 
 /* ---------- OFFICER: DASHBOARD ---------- */
@@ -914,6 +969,30 @@ function renderOfficerDashboard(){
   `;
 }
 
+/* Convert a Google Drive sharing URL (https://drive.google.com/file/d/FILE_ID/view…)
+   into a thumbnail URL that can be used as an <img src>. Falls back to the
+   original URL if the format isn't recognised. */
+function _driveImgSrc(url){
+  const m = String(url||'').match(/\/d\/([^/?#]+)/);
+  if(m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400`;
+  // Other formats — pass through and let the browser try
+  return url;
+}
+
+/* Normalize role string from the server so 'Engineer', 'ENGINEER', 'MST',
+   ' field engineer ' all map to one of officer / engineer / warehouse.
+   Returns empty string if no sensible mapping found — the renderMain fallback
+   will then show the friendly "role not recognized" page. */
+function _normalizeRole(raw){
+  const r = String(raw||'').toLowerCase().trim();
+  if(['officer','engineering officer','eo','manager','engineer officer'].includes(r)) return 'officer';
+  if(['engineer','field engineer','fe','mst','mst (multi skill technician)','multi skill technician','technician'].includes(r)) return 'engineer';
+  if(['warehouse','warehouse staff','stores','store manager','depot','warehouse / stores'].includes(r)) return 'warehouse';
+  // Exact canonical match already?
+  if(['officer','engineer','warehouse'].includes(r)) return r;
+  return '';
+}
+
 /* ---------- HELPERS — shared across dashboards ---------- */
 function _currentMonthKey(){
   const d = new Date();
@@ -927,32 +1006,56 @@ function _shortMonth(d){
   return ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()];
 }
 
-/* Replacement trend bar chart — last 6 months including current, computed from real ticket data */
+/* Replacement trend stacked bar chart — last 6 months including current.
+   Each month's bar shows three segments stacked bottom-up:
+     • Green  = Approved / Dispatched / Completed (positive outcomes)
+     • Red    = Rejected
+     • Yellow = Pending (still awaiting officer action)
+   The total bar height scales relative to the busiest month so trends are visible. */
 function renderReplacementTrendCard(){
   const today = new Date();
-  // Build the last 6 month windows (newest = current month)
   const months = [];
   for(let i=5; i>=0; i--){
     const d = new Date(today.getFullYear(), today.getMonth()-i, 1);
     const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    const count = tickets.filter(t => t.raisedOn && t.raisedOn.startsWith(key)).length;
-    months.push({key, label:_shortMonth(d), count, isCurrent:i===0});
+    const monthly = tickets.filter(t => t.raisedOn && t.raisedOn.startsWith(key));
+    const approved = monthly.filter(t => ["Approved","Dispatched","Completed"].includes(t.status)).length;
+    const rejected = monthly.filter(t => t.status === "Rejected").length;
+    const pending  = monthly.filter(t => t.status === "Pending").length;
+    const total    = monthly.length;
+    months.push({key, label:_shortMonth(d), total, approved, rejected, pending});
   }
-  const max = Math.max(1, ...months.map(m=>m.count));   // never 0 to avoid /0
-  const allZero = months.every(m=>m.count===0);
+  const max = Math.max(1, ...months.map(m=>m.total));
+  const allZero = months.every(m=>m.total===0);
 
   return `
     <div class="card">
       <h3>Replacement Trend &mdash; Last 6 Months</h3>
+      <div class="chart-legend">
+        <span><span class="sw" style="background:var(--green)"></span>Approved / Issued</span>
+        <span><span class="sw" style="background:var(--red)"></span>Rejected</span>
+        <span><span class="sw" style="background:var(--bpcl-yellow)"></span>Pending</span>
+        <span style="margin-left:auto;color:var(--muted);font-size:11px">Number above each bar = total requests raised</span>
+      </div>
       ${allZero
         ? `<div class='empty' style='padding:40px'>📊 No tickets in the last 6 months yet. The chart will appear once data starts flowing in.</div>`
         : `<div class="bar-chart" style="padding-top:30px;padding-bottom:30px">
             ${months.map(m => {
-              const heightPct = Math.max(4, Math.round((m.count/max)*90));   // min 4% so empty bars are visible
-              const style = m.isCurrent
-                ? `height:${heightPct}%;background:linear-gradient(180deg,var(--bpcl-yellow),var(--bpcl-yellow-2))`
-                : `height:${heightPct}%`;
-              return `<div class="bar" style="${style}"><span class="v">${m.count}</span><span class="lbl">${m.label}</span></div>`;
+              if(m.total === 0){
+                return `<div class="bar stacked" style="height:4%;background:#e5e7eb"><span class="v">0</span><span class="lbl">${m.label}</span></div>`;
+              }
+              const heightPct = Math.max(8, Math.round((m.total/max)*90));
+              // Each segment's height inside the bar is % of total
+              const apPct = (m.approved/m.total)*100;
+              const rjPct = (m.rejected/m.total)*100;
+              const pdPct = (m.pending/m.total)*100;
+              return `<div class="bar stacked" style="height:${heightPct}%" title="${m.approved} approved • ${m.rejected} rejected • ${m.pending} pending">
+                <div class="seg seg-approved" style="height:${apPct}%" title="${m.approved} approved"></div>
+                <div class="seg seg-rejected" style="height:${rjPct}%" title="${m.rejected} rejected"></div>
+                <div class="seg seg-pending"  style="height:${pdPct}%" title="${m.pending} pending"></div>
+                <span class="v">${m.total}</span>
+                <span class="lbl">${m.label}</span>
+              </div>`;
             }).join("")}
           </div>`}
     </div>
@@ -1793,9 +1896,16 @@ function viewTicket(id){
     <div class="detail-grid full">
       <div class="detail-item"><div class="k">Reason</div><div class="v">${t.reason}</div></div>
       <div class="detail-item"><div class="k">Description</div><div class="v">${t.description||"-"}</div></div>
-      <div class="detail-item"><div class="k">Photos</div><div class="v">${t.photos} photo(s) attached
+      <div class="detail-item"><div class="k">Photos</div><div class="v">${t.photos||(t.photoUrls?t.photoUrls.length:0)} photo(s) attached
         <div class="photo-preview" style="margin-top:6px">
-          ${Array(t.photos).fill(0).map(()=>`<div class="photo-thumb">📷 Photo</div>`).join("")}
+          ${(t.photoUrls && t.photoUrls.length)
+            ? t.photoUrls.map(u => {
+                const src = _driveImgSrc(u);
+                return `<a href="${u}" target="_blank" rel="noopener" title="Open in Google Drive" style="text-decoration:none">
+                  <div class="photo-thumb"><img src="${src}" alt="Damage photo" referrerpolicy="no-referrer" onerror="this.style.display='none';this.parentElement.innerHTML='&#128247; Photo';this.parentElement.style.fontSize='10px';this.parentElement.style.color='var(--muted)'" /></div>
+                </a>`;
+              }).join("")
+            : Array(t.photos||0).fill(0).map(()=>`<div class="photo-thumb">📷 Photo</div>`).join("")}
         </div>
       </div></div>
     </div>
@@ -1997,14 +2107,17 @@ attemptLogin = async function(e){
     const r = await apiCall('login', {id, pwd});
     setApiToken(r.token);
     const u = r.user;
+    // Normalize role — tolerate case differences, leading/trailing spaces,
+    // and common aliases that might creep in if someone edits the Sheet by hand.
+    u.role = _normalizeRole(u.role);
     currentUser = {id:u.id, ...u};
     currentRole = u.role;
-    currentPage = defaultPage[u.role];
+    currentPage = defaultPage[u.role] || "dashboard";
     // Show UI right away — don't wait for full data load
     document.getElementById("loginPage").style.display = "none";
     document.getElementById("userName").textContent = u.name;
-    document.getElementById("userRole").textContent = u.roleLabel+" • "+u.territory;
-    document.getElementById("userAvatar").textContent = u.name.split(" ").map(x=>x[0]).join("").substring(0,2);
+    document.getElementById("userRole").textContent = (u.roleLabel||'')+" • "+(u.territory||'');
+    document.getElementById("userAvatar").textContent = (u.name||'?').split(" ").map(x=>x[0]).join("").substring(0,2);
     document.getElementById("syncBtn").style.display = "inline-flex";
     renderSidebar();
     renderMain();
@@ -2324,7 +2437,14 @@ async function loadUsersFromCloud(){
     if(r.users){
       users = {};
       r.users.forEach(u => {
-        users[u.id] = {pwd:"••••••", name:u.name, role:u.role, roleLabel:u.roleLabel, territory:u.territory};
+        const normalized = _normalizeRole(u.role);
+        users[u.id] = {
+          pwd:"••••••",
+          name:u.name,
+          role: normalized || u.role,
+          roleLabel: u.roleLabel || normalized,
+          territory: u.territory
+        };
       });
     }
   }catch(e){/* non-fatal */}
