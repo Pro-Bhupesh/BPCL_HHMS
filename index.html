@@ -731,6 +731,12 @@
 // only happens if an officer/admin manually saves a different URL via
 // Settings → Cloud Connection → Change URL (stored in localStorage).
 const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbw9NDICxNVxwjxtkVJRV8b-Bukq4r4AhWhyXi2Pz7ENjOVnd2DhYGwNhXxv0LRy9g74/exec";
+// Migration: clear any old/stale script URL so DEFAULT_API_URL is always used.
+// Remove this block only if you intentionally want per-device URL overrides.
+try {
+  const _stored = localStorage.getItem('bpcl_api_url');
+  if (_stored && _stored !== DEFAULT_API_URL) { localStorage.removeItem('bpcl_api_url'); }
+} catch(e) {}
 let apiUrl   = (function(){
   try { return localStorage.getItem('bpcl_api_url') || DEFAULT_API_URL; }
   catch(e){ return DEFAULT_API_URL; }
