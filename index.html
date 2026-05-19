@@ -4,12 +4,19 @@
    BPCL HHMS — Hose & Nozzle Replacement Tracker
    Hanging Hardware Management System
   ═══════════════════════════════════════════════════════════════════════
-   VERSION   :  v1.5.1
+   VERSION   :  v1.5.2
    RELEASED  :  May 2026
    AUTHOR    :  Bhupesh Bajiya — Engineering Officer, Belgaum Territory
    CONTACT   :  bpbajiya2016@gmail.com
    BACKEND   :  Companion Apps Script — must run matching v1.5.x
   ═══════════════════════════════════════════════════════════════════════
+   What's new in v1.5.2 (mobile UI):
+     • Bottom navigation bar — thumb-friendly nav on mobile
+     • Ticket card view on mobile — replaces cramped horizontal table
+     • Stat cards tappable with icons — tap to navigate
+     • Flaticon uicons throughout — nav, buttons, topbar, stat cards
+     • Auth token persists across reloads (localStorage)
+     • Auto-clear stale API URL from localStorage
    What's new in v1.5.1 (patch):
      • Cloud Sync URL hardcoded for APK build — MSTs skip setup screen
    What's in v1.5.0:
@@ -35,6 +42,8 @@
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="HHMS_Icon.png" />
 <link rel="icon" type="image/png" href="HHMS_Icon.png" />
+<!-- Flaticon uicons — regular rounded -->
+<link rel="stylesheet" href="https://cdn-uicons.flaticon.com/2.6.0/uicons-regular-rounded/css/uicons-regular-rounded.css" />
 <title>HHMS — Hose &amp; Nozzle Replacement Tracker</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2300205B'/%3E%3Ccircle cx='32' cy='24' r='8' fill='%23FDB913'/%3E%3Ctext x='32' y='52' font-family='Arial,sans-serif' font-size='14' font-weight='900' fill='white' text-anchor='middle'%3EBPCL%3C/text%3E%3C/svg%3E" />
 <style>
@@ -73,15 +82,11 @@
   }
   .brand{display:flex;align-items:center;gap:14px}
   .logo{
-    background:#fff;color:var(--bpcl-blue);
-    font-weight:900;padding:6px 10px;border-radius:6px;font-size:16px;
-    letter-spacing:1px;display:flex;align-items:center;gap:6px;
-    box-shadow:0 2px 4px rgba(0,0,0,.15);
+    display:flex;align-items:center;padding:2px 0;
   }
-  .logo::before{
-    content:"";display:inline-block;width:14px;height:14px;border-radius:50%;
-    background:radial-gradient(circle,var(--bpcl-yellow) 0%,var(--bpcl-yellow-2) 100%);
-    box-shadow:0 0 6px rgba(253,185,19,.6);
+  .logo img{
+    height:40px;width:auto;
+    filter:drop-shadow(0 2px 6px rgba(0,0,0,.3)) brightness(1.08);
   }
   .brand-text{line-height:1.2}
   .brand-text .t1{font-size:16px;font-weight:700;letter-spacing:.3px}
@@ -318,63 +323,140 @@
   /* ---------- LOGIN PAGE ---------- */
   .login-bg{
     position:fixed;inset:0;z-index:500;
-    background:linear-gradient(135deg,var(--bpcl-blue) 0%,var(--bpcl-blue-2) 100%);
-    display:flex;align-items:center;justify-content:center;padding:20px;
-    overflow-y:auto;
+    /* Desktop background image */
+    background:url('bg_PC.png') center center / cover no-repeat #00175a;
+    display:flex;align-items:center;justify-content:center;
+    padding:20px;overflow-y:auto;
   }
+  /* Dark blue tint overlay so card stays readable */
   .login-bg::before{
-    content:"";position:absolute;inset:0;
-    background:radial-gradient(circle at 10% 20%,rgba(253,185,19,.08),transparent 40%),
-               radial-gradient(circle at 90% 80%,rgba(253,185,19,.06),transparent 40%);
-    pointer-events:none;
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:rgba(0,15,70,.45);
+  }
+  /* Dot pattern — top right corner */
+  .login-dots{
+    position:absolute;top:0;right:0;width:220px;height:220px;
+    background-image:radial-gradient(rgba(255,255,255,.18) 1.5px,transparent 1.5px);
+    background-size:20px 20px;pointer-events:none;z-index:0;
+  }
+  .login-wave-right{display:none} /* not needed with real photo */
+  /* Mobile: swap to mobile background */
+  @media(max-width:768px){
+    .login-bg{
+      background:url('bg_mobile.png') center center / cover no-repeat #00175a;
+    }
   }
   .login-card{
-    background:#fff;border-radius:14px;max-width:430px;width:100%;
-    padding:36px 34px;box-shadow:0 20px 50px rgba(0,0,0,.35);
-    border-top:5px solid var(--bpcl-yellow);position:relative;z-index:1;
+    background:#fff;border-radius:20px;max-width:430px;width:100%;
+    padding:36px 32px 28px;
+    box-shadow:0 28px 70px rgba(0,0,0,.45);
+    border-top:5px solid var(--bpcl-yellow);
+    position:relative;z-index:1;
   }
-  .login-head{text-align:center;margin-bottom:24px}
-  .login-logo{
-    display:inline-flex;align-items:center;gap:10px;
-    background:var(--bpcl-blue);color:#fff;padding:11px 20px;
-    border-radius:10px;font-weight:900;font-size:24px;letter-spacing:2px;
-    box-shadow:0 4px 10px rgba(0,32,91,.3);
+  /* ---- Card header ---- */
+  .login-head{text-align:center;margin-bottom:26px}
+  .login-icon-wrap{
+    width:96px;height:96px;
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 18px;
+    /* no circle background — the hexagonal icon has its own shape */
   }
-  .login-logo::before{
-    content:"";display:inline-block;width:18px;height:18px;border-radius:50%;
-    background:radial-gradient(circle,var(--bpcl-yellow) 0%,var(--bpcl-yellow-2) 100%);
-    box-shadow:0 0 10px rgba(253,185,19,.9);
+  .login-icon-wrap img{
+    width:88px;height:auto;
+    filter:drop-shadow(0 4px 14px rgba(0,32,91,.28));
   }
-  .login-title{font-size:17px;color:var(--bpcl-blue);font-weight:700;margin-top:16px}
-  .login-sub{font-size:12px;color:var(--muted);margin-top:3px}
+  .login-title{
+    font-size:22px;font-weight:800;color:var(--bpcl-blue);
+    line-height:1.25;margin:0 0 6px;
+  }
+  .login-sub{font-size:12.5px;color:#64748b;margin-bottom:5px;letter-spacing:.2px}
   .login-tag{
-    color:var(--bpcl-yellow-2);font-style:italic;font-size:12px;margin-top:4px;
-    font-weight:600;letter-spacing:.5px;
+    color:#e07b00;font-style:italic;font-size:13px;
+    font-weight:700;letter-spacing:.3px;
   }
-  .login-form label{margin-top:14px}
-  .login-form .btn{
-    width:100%;padding:11px;justify-content:center;margin-top:20px;
-    font-size:14px;letter-spacing:.5px;
+  /* ---- Form fields ---- */
+  .login-field{margin-top:16px}
+  .login-field>label{
+    display:block;font-size:14px;font-weight:700;
+    color:var(--bpcl-blue);margin-bottom:8px;
   }
+  .login-field .req{color:var(--red)}
+  .input-wrap{position:relative;display:flex;align-items:center}
+  .input-icon{
+    position:absolute;left:14px;font-size:17px;
+    color:#94a3b8;pointer-events:none;z-index:1;
+  }
+  .input-wrap input{
+    width:100%;padding:13px 44px;border:1.5px solid #e2e8f0;
+    border-radius:10px;font-size:14px;color:var(--text);
+    background:#fff;transition:border-color .2s,box-shadow .2s;box-sizing:border-box;
+  }
+  .input-wrap input:focus{
+    border-color:var(--bpcl-blue);outline:none;
+    box-shadow:0 0 0 3px rgba(0,32,91,.08);
+  }
+  .pwd-toggle{
+    position:absolute;right:14px;background:none;border:none;
+    cursor:pointer;color:#94a3b8;padding:4px;font-size:17px;
+    display:flex;align-items:center;
+  }
+  .pwd-toggle:hover{color:var(--bpcl-blue)}
+  /* ---- Sign In button ---- */
+  .login-btn{
+    width:100%;padding:15px;margin-top:22px;
+    background:var(--bpcl-blue);color:#fff;
+    border:none;border-radius:10px;
+    font-size:16px;font-weight:700;letter-spacing:.5px;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;
+    box-shadow:0 4px 16px rgba(0,32,91,.35);transition:background .15s,box-shadow .15s;
+  }
+  .login-btn:hover{background:var(--bpcl-blue-2);box-shadow:0 6px 20px rgba(0,32,91,.45)}
+  .login-btn .fi{font-size:18px}
+  /* ---- Connection info ---- */
+  .login-conn{
+    margin-top:22px;padding-top:18px;
+    border-top:1px solid #e9eef5;text-align:center;
+  }
+  .conn-info{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    font-size:13px;color:#64748b;margin-bottom:10px;
+  }
+  .sheets-badge{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:22px;height:22px;border-radius:4px;
+    background:#1ba262;color:#fff;font-size:11px;font-weight:900;
+    flex-shrink:0;
+  }
+  .conn-change{
+    font-size:13px;color:var(--bpcl-blue);text-decoration:none;
+    display:inline-flex;align-items:center;gap:6px;font-weight:600;
+  }
+  .conn-change:hover{text-decoration:underline}
+  .conn-change .fi{font-size:13px}
+  /* ---- Feature tiles ---- */
+  .login-features{
+    display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;
+    margin-top:22px;padding-top:20px;border-top:1px solid #e9eef5;
+  }
+  .feat{text-align:center}
+  .feat-icon{
+    width:52px;height:52px;border-radius:50%;
+    background:linear-gradient(145deg,#fff8e1,#fff0b8);
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 10px;
+    box-shadow:0 2px 8px rgba(253,185,19,.2);
+  }
+  .feat-icon .fi{font-size:22px;color:var(--bpcl-blue)}
+  .feat-title{font-size:13px;font-weight:700;color:var(--bpcl-blue);margin-bottom:3px}
+  .feat-desc{font-size:11px;color:#64748b;line-height:1.45}
+  /* ---- Error + footer ---- */
   .login-err{
-    background:#fee2e2;color:#991b1b;padding:9px 12px;border-radius:6px;
+    background:#fee2e2;color:#991b1b;padding:9px 12px;border-radius:8px;
     font-size:12px;margin-top:12px;display:none;border-left:3px solid var(--red);
   }
   .login-err.show{display:block}
-  .demo-creds{
-    margin-top:22px;padding-top:16px;border-top:1px dashed var(--border);
-    font-size:11px;color:var(--muted);
-  }
-  .demo-creds h4{margin:0 0 8px 0;color:var(--bpcl-blue);font-size:12px;letter-spacing:.5px}
-  .demo-row{
-    padding:5px 8px;font-family:'Courier New',monospace;background:#f0f4fa;
-    border-radius:4px;margin-bottom:4px;display:flex;justify-content:space-between;
-    cursor:pointer;transition:.15s;
-  }
-  .demo-row:hover{background:#e0e9f5}
-  .demo-row .role{color:var(--bpcl-blue);font-weight:700}
   .login-foot{
-    text-align:center;margin-top:14px;font-size:10.5px;color:var(--muted);
+    text-align:center;margin-top:20px;font-size:10.5px;color:#94a3b8;
   }
 
   /* ---------- IMPORT UI ---------- */
@@ -554,17 +636,18 @@
     .topbar{padding:6px 10px;gap:8px}
     .brand{gap:8px;flex:1;min-width:0}
     .brand-text{display:none}                /* hide long product name; the BPCL pill is enough */
-    .logo{font-size:13px;padding:5px 9px;letter-spacing:.5px}
+    .logo img{height:34px}
     /* Avatar stays visible, but full name + role go to sidebar */
     .user-info{padding:0;gap:0}
     .user-info .uname,.user-info .urole{display:none}
     .avatar{width:32px;height:32px;font-size:13px}
-    /* Sync button — dot only (no "Sync" word) */
-    #syncBtn{padding:6px 8px;font-size:0}
-    #syncBtn #syncIndicator{font-size:14px}
-    /* Logout button — icon only (the ⎋ glyph) */
-    .logout-btn{padding:6px 10px;font-size:0;line-height:1}
-    .logout-btn::before{content:"⎋";font-size:18px;color:#fff}
+    /* Sync button — hide text label, keep dot + icon */
+    #syncBtn .sync-txt{display:none}
+    #syncBtn{padding:6px 10px}
+    #syncBtn #syncIndicator{font-size:12px}
+    /* Logout button — icon only, hide text */
+    .logout-btn .logout-txt{display:none}
+    .logout-btn{padding:6px 10px}
     #toastBox{right:10px;left:10px;max-width:none}
     /* Sidebar slides in / out via the hamburger button (#hamburger) on mobile */
     .sidebar{
@@ -601,13 +684,101 @@
     .modal-foot{flex-wrap:wrap}
     .modal-foot .btn{flex:1;min-width:120px}
     /* Login card readability */
-    .login-card{padding:20px;margin:10px}
+    .login-card{padding:24px 20px 22px;margin:10px}
+    .login-title{font-size:19px}
+    .login-features{gap:10px}
+    .feat-icon{width:44px;height:44px}
+    .feat-icon .fi{font-size:18px}
+    .feat-title{font-size:12px}
+    .feat-desc{font-size:10px}
   }
   @media (max-width:480px){
     .stat-grid{grid-template-columns:1fr}
     .page-header{flex-direction:column;align-items:flex-start;gap:10px}
     .page-header button,.page-header .btn{width:100%}
   }
+
+  /* =========================================================
+     FLATICON UICONS — sizing helpers
+     ========================================================= */
+  .fi{vertical-align:middle;line-height:1}
+  .nav-icon .fi{font-size:16px}
+  .bn-icon .fi{font-size:22px}
+  .stat-icon .fi{font-size:22px}
+  .topbar-icon .fi{font-size:18px;color:#fff}
+  /* Button icons */
+  .btn .fi{font-size:14px;vertical-align:middle}
+  .btn-sm .fi{font-size:12px}
+
+  /* =========================================================
+     BOTTOM NAVIGATION BAR — mobile only
+     ========================================================= */
+  .bottom-nav{display:none}
+  @media(max-width:768px){
+    .bottom-nav{
+      display:flex;position:fixed;bottom:0;left:0;right:0;
+      background:linear-gradient(180deg,var(--bpcl-blue) 0%,var(--bpcl-dark-2) 100%);
+      border-top:2px solid rgba(253,185,19,.35);
+      z-index:100;
+      padding-bottom:env(safe-area-inset-bottom,0px);
+      box-shadow:0 -3px 14px rgba(0,32,91,.3);
+    }
+    .bn-item{
+      flex:1;display:flex;flex-direction:column;align-items:center;
+      padding:8px 4px 10px;color:rgba(255,255,255,.55);
+      cursor:pointer;font-size:10px;gap:3px;transition:color .15s;
+      position:relative;border:none;background:none;
+    }
+    .bn-item.active{color:var(--bpcl-yellow)}
+    .bn-item.active .bn-icon{transform:translateY(-2px)}
+    .bn-icon{font-size:20px;line-height:1;transition:transform .15s}
+    .bn-label{font-size:10px;font-weight:500;letter-spacing:.2px;white-space:nowrap}
+    .bn-badge{
+      position:absolute;top:5px;right:calc(50% - 20px);
+      background:#e53e3e;color:#fff;font-size:9px;font-weight:700;
+      padding:1px 5px;border-radius:10px;min-width:16px;text-align:center;
+      line-height:14px;
+    }
+    /* Push content up so bottom nav doesn't cover it */
+    .shell{padding-bottom:62px}
+  }
+
+  /* =========================================================
+     MOBILE TICKET CARDS
+     ========================================================= */
+  .ticket-card-list{display:none}
+  @media(max-width:768px){
+    /* Hide the scrollable table, show cards instead */
+    .ticket-table-wrap{display:none}
+    .ticket-card-list{display:flex;flex-direction:column;gap:10px}
+  }
+  .ticket-card{
+    background:#fff;border:1px solid var(--border);border-radius:12px;
+    padding:14px 16px;display:flex;flex-direction:column;gap:10px;
+    box-shadow:0 1px 4px rgba(0,32,91,.07);
+  }
+  .tc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .tc-id{font-weight:700;color:var(--bpcl-blue);font-size:13.5px;letter-spacing:.3px}
+  .tc-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
+  .tc-row{display:flex;flex-direction:column;gap:1px}
+  .tc-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .tc-val{font-size:13px;color:var(--text);font-weight:500}
+  .tc-foot{
+    display:flex;justify-content:space-between;align-items:center;
+    padding-top:10px;border-top:1px solid var(--border);
+  }
+  .tc-date{font-size:11px;color:var(--muted)}
+
+  /* =========================================================
+     STAT CARDS — tappable on mobile
+     ========================================================= */
+  @media(max-width:768px){
+    .stat-card[data-goto]{cursor:pointer;transition:transform .12s,box-shadow .12s}
+    .stat-card[data-goto]:active{transform:scale(.97);box-shadow:none}
+    .stat-card .stat-icon{display:block;font-size:22px;margin-bottom:4px}
+  }
+  .stat-card .stat-icon{display:none}
+
   /* Add to home screen meta — works as installable PWA when served over HTTPS */
 
 </style>
@@ -631,7 +802,7 @@
 <div class="login-bg" id="setupPage" style="display:none">
   <div class="login-card" style="max-width:520px">
     <div class="login-head">
-      <div class="login-logo">BPCL</div>
+      <div class="login-icon-wrap" style="margin-bottom:14px"><img src="HHMS_Icon.svg" alt="HHMS" /></div>
       <div class="login-title">Hose &amp; Nozzle Replacement Tracker</div>
       <div class="login-sub">First-time setup &bull; Connect your Google Sheet</div>
       <div class="login-tag">Energising Lives</div>
@@ -652,32 +823,84 @@
 
 <!-- LOGIN OVERLAY (shown once cloud URL is configured) -->
 <div class="login-bg" id="loginPage" style="display:none">
+  <!-- Decorative layers -->
+  <div class="login-dots"></div>
+  <div class="login-wave-right"></div>
+
   <div class="login-card">
+    <!-- Header -->
     <div class="login-head">
-      <div class="login-logo">BPCL</div>
-      <div class="login-title">Hose &amp; Nozzle Replacement Tracker</div>
+      <div class="login-icon-wrap">
+        <img src="HHMS_Icon.svg" alt="HHMS" />
+      </div>
+      <h1 class="login-title">Hose &amp; Nozzle<br>Replacement Tracker</h1>
       <div class="login-sub">Engineering Division &bull; Retail Service Management</div>
       <div class="login-tag">Energising Lives</div>
     </div>
-    <form class="login-form" onsubmit="attemptLogin(event)">
-      <label>User ID <span style="color:var(--red)">*</span></label>
-      <input type="text" id="loginId" placeholder="Your assigned user ID" autocomplete="username" required />
-      <label>Password <span style="color:var(--red)">*</span></label>
-      <input type="password" id="loginPwd" placeholder="Enter your password" autocomplete="current-password" required />
+
+    <!-- Form -->
+    <form onsubmit="attemptLogin(event)">
+      <div class="login-field">
+        <label>User ID <span class="req">*</span></label>
+        <div class="input-wrap">
+          <i class="fi fi-rr-user input-icon"></i>
+          <input type="text" id="loginId" placeholder="Your assigned user ID" autocomplete="username" required />
+        </div>
+      </div>
+      <div class="login-field">
+        <label>Password <span class="req">*</span></label>
+        <div class="input-wrap">
+          <i class="fi fi-rr-lock input-icon"></i>
+          <input type="password" id="loginPwd" placeholder="Enter your password" autocomplete="current-password" required />
+          <button type="button" class="pwd-toggle" onclick="toggleLoginPwd()" title="Show/hide password">
+            <i class="fi fi-rr-eye" id="pwdEyeIcon"></i>
+          </button>
+        </div>
+      </div>
       <div class="login-err" id="loginErr">Invalid credentials. Please try again.</div>
-      <button type="submit" class="btn btn-primary">🔒 Sign In</button>
+      <button type="submit" class="login-btn">
+        <i class="fi fi-rr-lock"></i> Sign In
+      </button>
     </form>
-    <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px">
-      Connected to your Google Sheet. <a href="#" onclick="event.preventDefault();showSetupOverlay()" style="color:var(--bpcl-blue);text-decoration:underline">Change connection</a>
+
+    <!-- Connection -->
+    <div class="login-conn">
+      <div class="conn-info">
+        Connected to your Google Sheet
+        <span class="sheets-badge">S</span>
+      </div>
+      <a href="#" class="conn-change" onclick="event.preventDefault();showSetupOverlay()">
+        <i class="fi fi-rr-refresh"></i> Change connection
+      </a>
     </div>
+
+    <!-- Feature tiles -->
+    <div class="login-features">
+      <div class="feat">
+        <div class="feat-icon"><i class="fi fi-rr-shield-check"></i></div>
+        <div class="feat-title">Secure</div>
+        <div class="feat-desc">Role-based access &amp; data protection</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon"><i class="fi fi-rr-camera"></i></div>
+        <div class="feat-title">Track</div>
+        <div class="feat-desc">Photo evidence for every replacement</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon"><i class="fi fi-rr-stats"></i></div>
+        <div class="feat-title">Monitor</div>
+        <div class="feat-desc">Real-time reports &amp; complete history</div>
+      </div>
+    </div>
+
     <div class="login-foot">&copy; 2026 Bharat Petroleum Corporation Limited. For authorised personnel only.</div>
   </div>
 </div>
 
 <div class="topbar">
   <div class="brand">
-    <button id="hamburger" onclick="toggleSidebar()" aria-label="Open menu" title="Menu">☰</button>
-    <div class="logo">BPCL</div>
+    <button id="hamburger" onclick="toggleSidebar()" aria-label="Open menu" title="Menu"><i class="fi fi-rr-menu-burger topbar-icon"></i></button>
+    <div class="logo"><img src="HHMS_Icon.svg" alt="HHMS" /></div>
     <div class="brand-text">
       <div class="t1">Bharat Petroleum &mdash; Hose &amp; Nozzle Replacement Tracker <span class="ver-chip" id="verChip"></span></div>
       <div class="t2">Energising Lives &bull; Engineering Division, Retail Service Management</div>
@@ -685,7 +908,7 @@
   </div>
   <div style="display:flex;align-items:center;gap:8px">
     <button id="syncBtn" class="logout-btn" onclick="manualSync()" title="Sync with Google Sheets" style="display:none">
-      <span id="syncIndicator" class="sync-ok">●</span> Sync
+      <span id="syncIndicator" class="sync-ok">●</span> <i class="fi fi-rr-refresh topbar-icon"></i><span class="sync-txt"> Sync</span>
     </button>
     <div class="user-info" id="userInfo">
       <div class="avatar" id="userAvatar">U</div>
@@ -694,7 +917,7 @@
         <div class="urole" id="userRole">-</div>
       </div>
     </div>
-    <button class="logout-btn" onclick="logout()" title="Logout">⎋ Logout</button>
+    <button class="logout-btn" onclick="logout()" title="Logout"><i class="fi fi-rr-sign-out-alt topbar-icon"></i><span class="logout-txt"> Logout</span></button>
   </div>
 </div>
 
@@ -706,6 +929,9 @@
   <!-- MAIN CONTENT -->
   <main class="main" id="main"></main>
 </div>
+
+<!-- BOTTOM NAVIGATION BAR (mobile only) -->
+<nav class="bottom-nav" id="bottomNav"></nav>
 
 <!-- MODAL -->
 <div class="modal-bg" id="modalBg">
@@ -752,7 +978,7 @@ let cloudMode = true;
      MINOR — new feature, additive only
      PATCH — bug fix or polish
    ===================================================== */
-const APP_VERSION = "1.5.1";
+const APP_VERSION = "1.5.2";
 const APP_VERSION_NAME = "v" + APP_VERSION;
 const APP_RELEASE_DATE = "May 2026";
 const APP_RELEASE_NOTES = [
@@ -888,48 +1114,48 @@ let currentPhotoCount = 0;
 const navConfig = {
   officer: [
     {title:"MAIN"},
-    {id:"dashboard",icon:"▣",label:"Dashboard"},
-    {id:"pending",icon:"⏱",label:"Pending Approvals",badge:()=>tickets.filter(t=>t.status==="Pending").length},
-    {id:"alltickets",icon:"📋",label:"All Tickets"},
+    {id:"dashboard",     icon:'<i class="fi fi-rr-home"></i>',            label:"Dashboard"},
+    {id:"pending",       icon:'<i class="fi fi-rr-clock"></i>',           label:"Pending Approvals", badge:()=>tickets.filter(t=>t.status==="Pending").length},
+    {id:"alltickets",    icon:'<i class="fi fi-rr-list"></i>',            label:"All Tickets"},
     {title:"REPORTS"},
-    {id:"history",icon:"📜",label:"Outlet History"},
-    {id:"frequency",icon:"📊",label:"Frequency Analysis"},
-    {id:"monthly",icon:"📈",label:"Monthly Consumption"},
+    {id:"history",       icon:'<i class="fi fi-rr-time-past"></i>',       label:"Outlet History"},
+    {id:"frequency",     icon:'<i class="fi fi-rr-chart-histogram"></i>', label:"Frequency Analysis"},
+    {id:"monthly",       icon:'<i class="fi fi-rr-stats"></i>',           label:"Monthly Consumption"},
     {title:"MASTERS"},
-    {id:"outlets",icon:"⛽",label:"Retail Outlets",badge:()=>outlets.length},
-    {id:"importoutlets",icon:"⬆",label:"Import Outlets"},
-    {id:"manageusers",icon:"👥",label:"Enroll Users",badge:()=>Object.keys(users).length},
-    {id:"stockview",icon:"📦",label:"Stock Inventory"},
+    {id:"outlets",       icon:'<i class="fi fi-rr-gas-pump"></i>',        label:"Retail Outlets", badge:()=>outlets.length},
+    {id:"importoutlets", icon:'<i class="fi fi-rr-upload"></i>',          label:"Import Outlets"},
+    {id:"manageusers",   icon:'<i class="fi fi-rr-users"></i>',           label:"Enroll Users", badge:()=>Object.keys(users).length},
+    {id:"stockview",     icon:'<i class="fi fi-rr-box"></i>',             label:"Stock Inventory"},
     {title:"ACCOUNT"},
-    {id:"settings",icon:"⚙",label:"Settings"}
+    {id:"settings",      icon:'<i class="fi fi-rr-settings"></i>',        label:"Settings"}
   ],
   engineer: [
     {title:"MAIN"},
-    {id:"dashboard",icon:"▣",label:"Dashboard"},
-    {id:"raise",icon:"＋",label:"Raise New Ticket"},
-    {id:"pendinginstall",icon:"🔧",label:"Pending Installation",badgeRed:true,badge:()=>{
+    {id:"dashboard",      icon:'<i class="fi fi-rr-home"></i>',       label:"Dashboard"},
+    {id:"raise",          icon:'<i class="fi fi-rr-plus"></i>',        label:"Raise New Ticket"},
+    {id:"pendinginstall", icon:'<i class="fi fi-rr-tools"></i>',       label:"Pending Installation", badgeRed:true, badge:()=>{
       const fn = currentUser?.name?.split(" ")[0]||"";
       return tickets.filter(t=>t.status==="Dispatched" && t.raisedBy && t.raisedBy.startsWith(fn)).length;
     }},
-    {id:"mytickets",icon:"📋",label:"My Tickets",badge:()=>{
+    {id:"mytickets",      icon:'<i class="fi fi-rr-ticket"></i>',      label:"My Tickets", badge:()=>{
       const fn = currentUser?.name?.split(" ")[0]||"";
       return tickets.filter(t=>t.raisedBy && t.raisedBy.startsWith(fn)).length;
     }},
-    {id:"history",icon:"📜",label:"Outlet History"},
+    {id:"history",        icon:'<i class="fi fi-rr-time-past"></i>',   label:"Outlet History"},
     {title:"ACCOUNT"},
-    {id:"settings",icon:"⚙",label:"Settings"}
+    {id:"settings",       icon:'<i class="fi fi-rr-settings"></i>',    label:"Settings"}
   ],
   warehouse: [
     {title:"MAIN"},
-    {id:"dashboard",icon:"▣",label:"Dashboard"},
-    {id:"dispatchqueue",icon:"📦",label:"Dispatch Queue",badge:()=>tickets.filter(t=>t.status==="Approved").length,badgeRed:true},
-    {id:"dispatched",icon:"✓",label:"Dispatched"},
-    {id:"monthly",icon:"📈",label:"Monthly Consumption"},
+    {id:"dashboard",     icon:'<i class="fi fi-rr-home"></i>',         label:"Dashboard"},
+    {id:"dispatchqueue", icon:'<i class="fi fi-rr-truck-side"></i>',   label:"Dispatch Queue", badge:()=>tickets.filter(t=>t.status==="Approved").length, badgeRed:true},
+    {id:"dispatched",    icon:'<i class="fi fi-rr-check-circle"></i>', label:"Dispatched"},
+    {id:"monthly",       icon:'<i class="fi fi-rr-stats"></i>',        label:"Monthly Consumption"},
     {title:"INVENTORY"},
-    {id:"receivestock",icon:"⬇",label:"Receive Stock (PO)"},
-    {id:"stockview",icon:"📊",label:"Stock Inventory"},
+    {id:"receivestock",  icon:'<i class="fi fi-rr-download"></i>',     label:"Receive Stock (PO)"},
+    {id:"stockview",     icon:'<i class="fi fi-rr-box"></i>',          label:"Stock Inventory"},
     {title:"ACCOUNT"},
-    {id:"settings",icon:"⚙",label:"Settings"}
+    {id:"settings",      icon:'<i class="fi fi-rr-settings"></i>',     label:"Settings"}
   ]
 };
 
@@ -953,6 +1179,47 @@ function renderSidebar(){
     </div>`;
   }).join("");
   document.getElementById("sidebar").innerHTML = html;
+  renderBottomNav();
+}
+
+/* Bottom nav — picks the 4 most important items per role */
+const bottomNavConfig = {
+  officer:[
+    {id:"dashboard",  icon:'<i class="fi fi-rr-home"></i>',        label:"Home"},
+    {id:"pending",    icon:'<i class="fi fi-rr-clock"></i>',       label:"Approvals", badge:()=>tickets.filter(t=>t.status==="Pending").length, badgeRed:true},
+    {id:"alltickets", icon:'<i class="fi fi-rr-list"></i>',        label:"Tickets"},
+    {id:"stockview",  icon:'<i class="fi fi-rr-box"></i>',         label:"Stock"}
+  ],
+  engineer:[
+    {id:"dashboard",      icon:'<i class="fi fi-rr-home"></i>',        label:"Home"},
+    {id:"raise",          icon:'<i class="fi fi-rr-plus"></i>',         label:"New Ticket"},
+    {id:"pendinginstall", icon:'<i class="fi fi-rr-tools"></i>',        label:"Install", badgeRed:true,
+      badge:()=>{const fn=currentUser?.name?.split(" ")[0]||"";
+        return tickets.filter(t=>t.status==="Dispatched"&&t.raisedBy&&t.raisedBy.startsWith(fn)).length;}},
+    {id:"mytickets",      icon:'<i class="fi fi-rr-ticket"></i>',       label:"My Tickets"}
+  ],
+  warehouse:[
+    {id:"dashboard",     icon:'<i class="fi fi-rr-home"></i>',         label:"Home"},
+    {id:"dispatchqueue", icon:'<i class="fi fi-rr-truck-side"></i>',   label:"Dispatch", badge:()=>tickets.filter(t=>t.status==="Approved").length, badgeRed:true},
+    {id:"stockview",     icon:'<i class="fi fi-rr-box"></i>',          label:"Stock"},
+    {id:"dispatched",    icon:'<i class="fi fi-rr-check-circle"></i>', label:"Dispatched"}
+  ]
+};
+
+function renderBottomNav(){
+  const nav = document.getElementById("bottomNav");
+  if(!nav) return;
+  const items = bottomNavConfig[currentRole];
+  if(!items){nav.innerHTML="";return;}
+  nav.innerHTML = items.map(it=>{
+    const active = currentPage===it.id?"active":"";
+    const badgeVal = it.badge ? it.badge() : 0;
+    const badge = badgeVal>0 ? `<span class="bn-badge">${badgeVal}</span>` : "";
+    return `<button class="bn-item ${active}" onclick="go('${it.id}')">
+      ${badge}<span class="bn-icon">${it.icon}</span>
+      <span class="bn-label">${it.label}</span>
+    </button>`;
+  }).join("");
 }
 
 function go(page){
@@ -986,6 +1253,20 @@ function switchRole(r){
 function fillDemo(id,pwd){
   document.getElementById("loginId").value = id;
   document.getElementById("loginPwd").value = pwd;
+}
+
+/* Toggle password visibility on login page */
+function toggleLoginPwd(){
+  const inp = document.getElementById("loginPwd");
+  const ico = document.getElementById("pwdEyeIcon");
+  if(!inp) return;
+  if(inp.type === "password"){
+    inp.type = "text";
+    ico.className = "fi fi-rr-eye-crossed";
+  } else {
+    inp.type = "password";
+    ico.className = "fi fi-rr-eye";
+  }
 }
 
 function attemptLogin(e){
@@ -1109,10 +1390,10 @@ function renderOfficerDashboard(){
     </div>
 
     <div class="stat-grid">
-      <div class="stat-card amber"><div class="label">Pending Approvals</div><div class="val">${pending}</div><div class="delta">Requires your action</div></div>
-      <div class="stat-card blue"><div class="label">Awaiting Dispatch</div><div class="val">${approved}</div><div class="delta">Approved — with warehouse</div></div>
-      <div class="stat-card green"><div class="label">Tickets This Month</div><div class="val">${thisMonth}</div><div class="delta">${thisMonthLabel}</div></div>
-      <div class="stat-card"><div class="label">Rejected This Month</div><div class="val">${rejectedThisMonth}</div><div class="delta">${thisMonthLabel} — warranty / invalid claims</div></div>
+      <div class="stat-card amber" data-goto="pending" onclick="go('pending')" title="View pending approvals"><span class="stat-icon"><i class="fi fi-rr-clock"></i></span><div class="label">Pending Approvals</div><div class="val">${pending}</div><div class="delta">Requires your action</div></div>
+      <div class="stat-card blue" data-goto="alltickets" onclick="go('alltickets')" title="View dispatched tickets"><span class="stat-icon"><i class="fi fi-rr-truck-side"></i></span><div class="label">Awaiting Dispatch</div><div class="val">${approved}</div><div class="delta">Approved — with warehouse</div></div>
+      <div class="stat-card green" data-goto="alltickets" onclick="go('alltickets')" title="View all tickets"><span class="stat-icon"><i class="fi fi-rr-list"></i></span><div class="label">Tickets This Month</div><div class="val">${thisMonth}</div><div class="delta">${thisMonthLabel}</div></div>
+      <div class="stat-card" data-goto="alltickets" onclick="go('alltickets')" title="View rejected tickets"><span class="stat-icon"><i class="fi fi-rr-cross-circle"></i></span><div class="label">Rejected This Month</div><div class="val">${rejectedThisMonth}</div><div class="delta">${thisMonthLabel} — warranty / invalid claims</div></div>
     </div>
 
     ${renderReplacementTrendCard()}
@@ -1236,7 +1517,7 @@ function renderAllTickets(){
   document.getElementById("main").innerHTML = `
     <div class="page-header">
       <div><h1>All Tickets</h1><div class="sub">Complete record of all replacement requests</div></div>
-      <button class="btn btn-secondary" onclick="exportTicketsCsv(null,'AllTickets')">⬇ Export CSV</button>
+      <button class="btn btn-secondary" onclick="exportTicketsCsv(null,'AllTickets')"><i class="fi fi-rr-download"></i> Export CSV</button>
     </div>
     <div class="filter-bar">
       <input type="text" id="searchBox" placeholder="Search ticket ID, outlet code, item…" oninput="filterTickets()" />
@@ -1269,7 +1550,9 @@ function filterTickets(){
 /* ---------- TICKET TABLE HELPER ---------- */
 function renderTicketTable(list,showActions){
   if(!list.length) return "<div class='empty'>No tickets found</div>";
-  return `
+
+  /* ── Desktop table ── */
+  const table = `<div class="ticket-table-wrap">
     <table>
       <thead>
         <tr>
@@ -1293,7 +1576,34 @@ function renderTicketTable(list,showActions){
           </tr>`;
         }).join("")}
       </tbody>
-    </table>`;
+    </table>
+  </div>`;
+
+  /* ── Mobile cards ── */
+  const cards = `<div class="ticket-card-list">
+    ${list.map(t=>{
+      const outlet = outlets.find(o=>o.code===t.outletCode)||{};
+      const sClass = "s-"+t.status.toLowerCase();
+      return `<div class="ticket-card">
+        <div class="tc-head">
+          <span class="tc-id">${t.id}</span>
+          <span class="status ${sClass}">${t.status}</span>
+        </div>
+        <div class="tc-meta">
+          <div class="tc-row"><span class="tc-lbl">Outlet</span><span class="tc-val">${t.outletCode} — ${outlet.name||""}</span></div>
+          <div class="tc-row"><span class="tc-lbl">Item</span><span class="tc-val">${t.item}${t.model?' — '+t.model:''} &times;${t.qty}</span></div>
+          <div class="tc-row"><span class="tc-lbl">Raised By</span><span class="tc-val">${t.raisedBy}</span></div>
+          <div class="tc-row"><span class="tc-lbl">Date</span><span class="tc-val">${fmtDate(t.raisedOn)}</span></div>
+        </div>
+        ${showActions?`<div class="tc-foot">
+          <span class="tc-date"></span>
+          <button class="btn btn-sm btn-secondary" onclick="viewTicket('${t.id}')">View →</button>
+        </div>`:""}
+      </div>`;
+    }).join("")}
+  </div>`;
+
+  return table + cards;
 }
 
 /* ---------- OUTLET HISTORY REPORT ---------- */
@@ -1333,7 +1643,7 @@ function showOutletHistory(code){
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <h3 style="margin:0">Replacement History</h3>
-        <button class="btn btn-secondary btn-sm" onclick="exportOutletHistoryCsv('${code}')">⬇ Export CSV</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportOutletHistoryCsv('${code}')"><i class="fi fi-rr-download"></i> Export CSV</button>
       </div>
       ${renderTicketTable(history,true)}
     </div>
@@ -1353,7 +1663,7 @@ function renderFrequency(){
   document.getElementById("main").innerHTML = `
     <div class="page-header">
       <div><h1>Frequency Analysis</h1><div class="sub">Outlets sorted by replacement frequency &mdash; flag anomalies</div></div>
-      <button class="btn btn-secondary" onclick="exportFrequencyCsv(window._freqRows||[])">⬇ Export CSV</button>
+      <button class="btn btn-secondary" onclick="exportFrequencyCsv(window._freqRows||[])"><i class="fi fi-rr-download"></i> Export CSV</button>
     </div>
     <div class="alert">⚠ Outlets with &ge; 3 replacements in the period may indicate misuse, theft, or a quality issue worth investigating.</div>
     <div class="card">
@@ -1433,7 +1743,7 @@ function renderMonthly(){
         <h1>Monthly Consumption Report</h1>
         <div class="sub">Quantities <strong>actually dispatched</strong> per month &mdash; ${territory}</div>
       </div>
-      <button class="btn btn-secondary" onclick="exportMonthlyCsv()">⬇ Export CSV</button>
+      <button class="btn btn-secondary" onclick="exportMonthlyCsv()"><i class="fi fi-rr-download"></i> Export CSV</button>
     </div>
 
     <div class="alert info" style="font-size:12px">
@@ -1503,8 +1813,8 @@ function renderOutlets(){
     <div class="page-header">
       <div><h1>Retail Outlet Master</h1><div class="sub">${outlets.length} outlets in your territory</div></div>
       <div style="display:flex;gap:10px">
-        <button class="btn btn-secondary" onclick="exportOutletsCsv()">⬇ Export CSV</button>
-        <button class="btn btn-primary" onclick="go('importoutlets')">⬆ Import Outlets</button>
+        <button class="btn btn-secondary" onclick="exportOutletsCsv()"><i class="fi fi-rr-download"></i> Export CSV</button>
+        <button class="btn btn-primary" onclick="go('importoutlets')"><i class="fi fi-rr-upload"></i> Import Outlets</button>
       </div>
     </div>
     <div class="card">
@@ -1566,7 +1876,7 @@ RO12002,Highway Petro,Surat GJ,Mrs. Kavita Shah,9825111111"></textarea>
         <div style="background:#f0f4fa;padding:14px;border-radius:6px;font-family:monospace;font-size:12px;white-space:pre;overflow-x:auto">Customer Code,Outlet Name,City,Dealer Name,Phone
 RO10001,Example Fuels,City Name GJ,Mr. Dealer Name,9824000000
 RO10002,Another Station,City Name GJ,Mrs. Another Dealer,9825000000</div>
-        <button class="btn btn-primary" onclick="downloadTemplate()" style="margin-top:14px">⬇ Download Template CSV</button>
+        <button class="btn btn-primary" onclick="downloadTemplate()" style="margin-top:14px"><i class="fi fi-rr-download"></i> Download Template CSV</button>
 
         <div style="margin-top:22px">
           <h4 style="color:var(--bpcl-blue);margin:0 0 8px 0">Column Guide</h4>
@@ -2065,7 +2375,7 @@ function renderPendingInstall(){
         <h1>Pending Installation</h1>
         <div class="sub">${mine.length} dispatched ticket(s) waiting for installation &amp; close</div>
       </div>
-      ${mine.length?`<button class="btn btn-secondary" onclick="exportTicketsCsv(window._pendingInstallExport,'PendingInstall')">⬇ Export CSV</button>`:''}
+      ${mine.length?`<button class="btn btn-secondary" onclick="exportTicketsCsv(window._pendingInstallExport,'PendingInstall')"><i class="fi fi-rr-download"></i> Export CSV</button>`:''}
     </div>
     <div class="alert">
       <strong>Workflow reminder:</strong> Travel to the outlet, install the dispatched item, take a clear installation photo, then click <em>View → Confirm Installation</em> on the ticket below to close it.
@@ -2113,7 +2423,7 @@ function openInstallModal(ticketId){
 
   document.getElementById("modalFoot").innerHTML = `
     <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-    <button class="btn btn-success" onclick="submitInstall('${ticketId}')">✓ Confirm &amp; Close Ticket</button>
+    <button class="btn btn-success" onclick="submitInstall('${ticketId}')"><i class="fi fi-rr-check"></i> Confirm &amp; Close Ticket</button>
   `;
   document.getElementById("modalBg").classList.add("show");
 }
@@ -2205,8 +2515,8 @@ function renderMyTickets(){
     <div class="page-header">
       <div><h1>My Tickets</h1><div class="sub">All tickets raised by you &mdash; ${currentUser?.name||"MST"}</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${mine.length?`<button class="btn btn-secondary" onclick="exportTicketsCsv(window._myTicketsExport,'MyTickets')">⬇ Export CSV</button>`:''}
-        <button class="btn btn-primary" onclick="go('raise')">＋ Raise New Ticket</button>
+        ${mine.length?`<button class="btn btn-secondary" onclick="exportTicketsCsv(window._myTicketsExport,'MyTickets')"><i class="fi fi-rr-download"></i> Export CSV</button>`:''}
+        <button class="btn btn-primary" onclick="go('raise')"><i class="fi fi-rr-plus"></i> Raise New Ticket</button>
       </div>
     </div>
     <div class="card">${mine.length?renderTicketTable(mine,true):"<div class='empty'>You haven't raised any tickets yet. Click 'Raise New Ticket' to start.</div>"}</div>
@@ -2234,7 +2544,7 @@ function renderDispatched(){
   document.getElementById("main").innerHTML = `
     <div class="page-header">
       <div><h1>Dispatched Items</h1><div class="sub">Past dispatches from this warehouse</div></div>
-      ${list.length?`<button class="btn btn-secondary" onclick="exportTicketsCsv(window._dispatchedExport,'Dispatched')">⬇ Export CSV</button>`:''}
+      ${list.length?`<button class="btn btn-secondary" onclick="exportTicketsCsv(window._dispatchedExport,'Dispatched')"><i class="fi fi-rr-download"></i> Export CSV</button>`:''}
     </div>
     <div class="card">${list.length?renderTicketTable(list,true):"<div class='empty'>No dispatched items yet.</div>"}</div>
   `;
@@ -2381,12 +2691,12 @@ function viewTicket(id){
     actions = `
       <button class="btn btn-secondary" onclick="closeModal()">Close</button>
       <button class="btn btn-danger" onclick="rejectTicket('${t.id}')">✗ Reject</button>
-      <button class="btn btn-success" onclick="approveTicket('${t.id}')">✓ Approve</button>
+      <button class="btn btn-success" onclick="approveTicket('${t.id}')"><i class="fi fi-rr-check"></i> Approve</button>
     `;
   } else if(currentRole==="warehouse" && t.status==="Approved"){
     actions = `
       <button class="btn btn-secondary" onclick="closeModal()">Close</button>
-      <button class="btn btn-primary" onclick="dispatchTicket('${t.id}')">📦 Mark as Dispatched</button>
+      <button class="btn btn-primary" onclick="dispatchTicket('${t.id}')"><i class="fi fi-rr-truck-side"></i> Mark as Dispatched</button>
     `;
   } else if(currentRole==="engineer" && t.status==="Dispatched"){
     actions = `
@@ -3060,10 +3370,10 @@ function renderEngineerDashboard(){
     </div>
 
     <div class="stat-grid">
-      <div class="stat-card amber"><div class="label">My Pending</div><div class="val">${pending}</div><div class="delta">Awaiting officer approval</div></div>
-      <div class="stat-card blue"><div class="label">In Progress</div><div class="val">${approved}</div><div class="delta">Approved / dispatched</div></div>
-      <div class="stat-card green"><div class="label">Completed</div><div class="val">${completed}</div><div class="delta">Installation confirmed</div></div>
-      <div class="stat-card"><div class="label">Raised This Month</div><div class="val">${thisMonth}</div><div class="delta">${thisMonthLabel}</div></div>
+      <div class="stat-card amber" data-goto="mytickets" onclick="go('mytickets')"><span class="stat-icon"><i class="fi fi-rr-clock"></i></span><div class="label">My Pending</div><div class="val">${pending}</div><div class="delta">Awaiting officer approval</div></div>
+      <div class="stat-card blue" data-goto="mytickets" onclick="go('mytickets')"><span class="stat-icon"><i class="fi fi-rr-truck-side"></i></span><div class="label">In Progress</div><div class="val">${approved}</div><div class="delta">Approved / dispatched</div></div>
+      <div class="stat-card green" data-goto="mytickets" onclick="go('mytickets')"><span class="stat-icon"><i class="fi fi-rr-check-circle"></i></span><div class="label">Completed</div><div class="val">${completed}</div><div class="delta">Installation confirmed</div></div>
+      <div class="stat-card" data-goto="mytickets" onclick="go('mytickets')"><span class="stat-icon"><i class="fi fi-rr-list"></i></span><div class="label">Raised This Month</div><div class="val">${thisMonth}</div><div class="delta">${thisMonthLabel}</div></div>
     </div>
 
     <div class="card">
@@ -3075,13 +3385,13 @@ function renderEngineerDashboard(){
       <h3>Quick Actions</h3>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:8px">
         <button class="btn btn-secondary" onclick="go('raise')" style="justify-content:flex-start;padding:14px">
-          ＋ Raise New Replacement Ticket
+          <i class="fi fi-rr-plus"></i> Raise New Replacement Ticket
         </button>
         <button class="btn btn-secondary" onclick="go('mytickets')" style="justify-content:flex-start;padding:14px">
-          📋 View All My Tickets (${mine.length})
+          <i class="fi fi-rr-ticket"></i> View All My Tickets (${mine.length})
         </button>
         <button class="btn btn-secondary" onclick="go('history')" style="justify-content:flex-start;padding:14px">
-          📜 Check Outlet Replacement History
+          <i class="fi fi-rr-time-past"></i> Check Outlet Replacement History
         </button>
       </div>
     </div>
@@ -3118,10 +3428,10 @@ function renderWarehouseDashboard(){
     </div>
 
     <div class="stat-grid">
-      <div class="stat-card amber"><div class="label">Ready to Dispatch</div><div class="val">${toDispatch}</div><div class="delta">Approved, pending warehouse action</div></div>
-      <div class="stat-card green"><div class="label">Dispatched This Month</div><div class="val">${dispatchedThisMonth}</div><div class="delta">${thisMonthLabel}</div></div>
-      <div class="stat-card blue"><div class="label">Hoses in Stock</div><div class="val">${hosesInStock}</div><div class="delta">${lowStockHose?"⚠ Low stock — receive new PO":"Available across active POs"}</div></div>
-      <div class="stat-card blue"><div class="label">Nozzles in Stock</div><div class="val">${nozzlesInStock}</div><div class="delta">${lowStockNozzle?"⚠ Low stock — receive new PO":"Available across active POs"}</div></div>
+      <div class="stat-card amber" data-goto="dispatchqueue" onclick="go('dispatchqueue')"><span class="stat-icon"><i class="fi fi-rr-truck-side"></i></span><div class="label">Ready to Dispatch</div><div class="val">${toDispatch}</div><div class="delta">Approved, pending warehouse action</div></div>
+      <div class="stat-card green" data-goto="dispatched" onclick="go('dispatched')"><span class="stat-icon"><i class="fi fi-rr-check-circle"></i></span><div class="label">Dispatched This Month</div><div class="val">${dispatchedThisMonth}</div><div class="delta">${thisMonthLabel}</div></div>
+      <div class="stat-card blue" data-goto="stockview" onclick="go('stockview')"><span class="stat-icon"><i class="fi fi-rr-tools"></i></span><div class="label">Hoses in Stock</div><div class="val">${hosesInStock}</div><div class="delta">${lowStockHose?"⚠ Low stock — receive new PO":"Available across active POs"}</div></div>
+      <div class="stat-card blue" data-goto="stockview" onclick="go('stockview')"><span class="stat-icon"><i class="fi fi-rr-wrench"></i></span><div class="label">Nozzles in Stock</div><div class="val">${nozzlesInStock}</div><div class="delta">${lowStockNozzle?"⚠ Low stock — receive new PO":"Available across active POs"}</div></div>
     </div>
 
     <div class="stat-grid" style="margin-top:14px">
@@ -3326,7 +3636,7 @@ function renderStockInventory(){
     <div class="page-header">
       <div><h1>Stock Inventory</h1><div class="sub">Hoses and nozzles received against PO &mdash; live balance per PO</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${stock.length?`<button class="btn btn-secondary" onclick="exportStockCsv()">⬇ Export CSV</button>`:''}
+        ${stock.length?`<button class="btn btn-secondary" onclick="exportStockCsv()"><i class="fi fi-rr-download"></i> Export CSV</button>`:''}
         ${isWarehouse?`<button class="btn btn-primary" onclick="go('receivestock')">＋ Receive New PO</button>`:''}
       </div>
     </div>
