@@ -1,0 +1,20 @@
+{
+  "name": "HHMS — BPCL Hose & Nozzle Tracker",
+  "short_name": "HHMS",
+  "description": "Hanging Hardware Management System for BPCL retail outlets — raise, approve, dispatch and close hose/nozzle replacement tickets.",
+  "id": "com.bpcl.hhms",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#00205B",
+  "lang": "en-IN",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    { "src": "HHMS_Icon.png",   "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "HHMS_Icon.png",   "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "HHMS_Icon.png",   "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "HHMS_Icon.png",   "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
